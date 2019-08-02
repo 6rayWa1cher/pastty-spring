@@ -2,6 +2,7 @@ package com.a6raywa1cher.pasttyspring.rest;
 
 import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
+import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
@@ -11,6 +12,7 @@ import com.a6raywa1cher.pasttyspring.rest.dto.mirror.ScriptMirror;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.UploadScriptDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -40,11 +43,13 @@ import java.util.UUID;
 public class ScriptController {
 	private ScriptService scriptService;
 	private AppConfig appConfig;
+	private UserService userService;
 
 	@Autowired
-	public ScriptController(ScriptService scriptService, AppConfig appConfig) {
+	public ScriptController(ScriptService scriptService, AppConfig appConfig, UserService userService) {
 		this.scriptService = scriptService;
 		this.appConfig = appConfig;
+		this.userService = userService;
 	}
 
 	public static String generateRandomName() {
@@ -95,11 +100,48 @@ public class ScriptController {
 		return ResponseEntity.ok(ScriptMirror.convert(putted));
 	}
 
+	private Pageable filterPageable(Pageable pageable) {
+		if (pageable.getPageSize() > 50) {
+			pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+		}
+		if (pageable.getSort().getOrderFor("maxComputeTime") != null) {
+			pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+					Sort.by("creationTime").descending());
+		}
+		return pageable;
+	}
+
 	@GetMapping("/")
+	@Transactional
 	public ResponseEntity<List<ScriptMirror>> getPage(
 			@PageableDefault(sort = "creationTime", direction = Sort.Direction.DESC)
 					Pageable pageable) {
-		Page<ScriptMirror> page = scriptService.getList(pageable).map(ScriptMirror::convert);
+		Pageable filtered = filterPageable(pageable);
+		Page<ScriptMirror> page = scriptService.getList(filtered).map(ScriptMirror::convert);
 		return ResponseEntity.ok(page.getContent());
+	}
+
+	@GetMapping(value = "/", params = "username")
+	@Transactional
+	public ResponseEntity<List<ScriptMirror>> getPageByUsername(
+			@PageableDefault(sort = "creationTime", direction = Sort.Direction.DESC)
+					Pageable pageable, String username, Authentication authentication
+	) {
+		Pageable filtered = filterPageable(pageable);
+		if (authentication != null && ((User) authentication.getPrincipal()).getUsername().equals(username)) {
+			return ResponseEntity.ok(
+					scriptService.findAllByVisibleAndAuthor(true, (User) authentication.getPrincipal(), filtered)
+							.map(ScriptMirror::convert).getContent()
+			);
+		} else {
+			Optional<User> optionalUser = userService.findByUsername(username);
+			if (optionalUser.isEmpty()) {
+				return ResponseEntity.notFound().build();
+			}
+			return ResponseEntity.ok(
+					scriptService.findAllByVisibleAndAuthor(false, optionalUser.get(), filtered)
+							.map(ScriptMirror::convert).getContent()
+			);
+		}
 	}
 }

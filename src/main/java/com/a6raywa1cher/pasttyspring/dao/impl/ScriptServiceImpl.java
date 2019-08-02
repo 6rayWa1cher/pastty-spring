@@ -3,6 +3,7 @@ package com.a6raywa1cher.pasttyspring.dao.impl;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
 import com.a6raywa1cher.pasttyspring.dao.repository.ScriptRepository;
 import com.a6raywa1cher.pasttyspring.models.Script;
+import com.a6raywa1cher.pasttyspring.models.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,11 @@ public class ScriptServiceImpl implements ScriptService {
 	@Override
 	public Optional<Script> findById(Long id) {
 		return repository.findById(id);
+	}
+
+	@Override
+	public Page<Script> findAllByVisibleAndAuthor(boolean visible, User author, Pageable pageable) {
+		return repository.findAllByVisibleAndAuthor(visible, author, pageable);
 	}
 
 	@Override
