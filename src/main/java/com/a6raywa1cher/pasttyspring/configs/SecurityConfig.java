@@ -1,7 +1,7 @@
 package com.a6raywa1cher.pasttyspring.configs;
 
 import com.a6raywa1cher.pasttyspring.configs.security.SecurityTokenService;
-import com.a6raywa1cher.pasttyspring.configs.security.TokenFilter;
+import com.a6raywa1cher.pasttyspring.configs.security.TokenOncePerRequestFilter;
 import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
@@ -40,12 +40,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.exceptionHandling().authenticationEntryPoint((req, rsp, e) -> rsp.sendError(HttpServletResponse.SC_UNAUTHORIZED))
 				.and()
 				// Add a filter to validate the tokens with every request
-				.addFilterAfter(new TokenFilter(securityTokenService), UsernamePasswordAuthenticationFilter.class)
+				.addFilterAfter(new TokenOncePerRequestFilter(securityTokenService), UsernamePasswordAuthenticationFilter.class)
 				// authorization requests config
 				.authorizeRequests()
 				.antMatchers(HttpMethod.GET, "/actuator/**").hasAnyAuthority(RoleAsString.ADMIN)
 				.antMatchers("/v2/api-docs", "/webjars/**", "/swagger-resources", "/swagger-resources/**", "/swagger-ui.html").permitAll()
 //				.antMatchers("/ws/file_agent").authenticated()
+				.antMatchers("/script/**").anonymous()
 				// allow all who are accessing "auth" and "user" service
 				.antMatchers(HttpMethod.POST, "/auth/login", "/user/reg").permitAll()
 				.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()

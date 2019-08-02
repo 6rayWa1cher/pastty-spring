@@ -14,11 +14,11 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-public class TokenFilter extends OncePerRequestFilter {
-	private static final Logger log = LoggerFactory.getLogger(TokenFilter.class);
+public class TokenOncePerRequestFilter extends OncePerRequestFilter {
+	private static final Logger log = LoggerFactory.getLogger(TokenOncePerRequestFilter.class);
 	private final SecurityTokenService securityTokenService;
 
-	public TokenFilter(SecurityTokenService securityTokenService) {
+	public TokenOncePerRequestFilter(SecurityTokenService securityTokenService) {
 		this.securityTokenService = securityTokenService;
 	}
 

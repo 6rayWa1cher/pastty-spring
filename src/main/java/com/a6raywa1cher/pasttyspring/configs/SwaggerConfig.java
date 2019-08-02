@@ -1,5 +1,6 @@
 package com.a6raywa1cher.pasttyspring.configs;
 
+import com.fasterxml.classmate.TypeResolver;
 import com.google.common.base.Predicates;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
@@ -30,7 +31,7 @@ public class SwaggerConfig {
 	}
 
 	@Bean
-	public Docket api() {
+	public Docket api(TypeResolver typeResolver) {
 		List<SecurityScheme> schemeList = new ArrayList<>();
 		schemeList.add(new ApiKey("JWT", "jwt", "header"));
 		ApiInfo apiInfo = new ApiInfoBuilder()
@@ -48,6 +49,7 @@ public class SwaggerConfig {
 				.securitySchemes(schemeList)
 				.useDefaultResponseMessages(true)
 				.apiInfo(apiInfo)
+//				.additionalModels(typeResolver.resolve(UploadScriptDTO.class))
 				.securityContexts(Collections.singletonList(securityContext()))
 				.select()
 				.apis(Predicates.or(

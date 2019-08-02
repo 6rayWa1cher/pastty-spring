@@ -13,6 +13,9 @@ public class UserMirror {
 	private Role role;
 
 	public static UserMirror convert(User user) {
+		if (user == null) {
+			return null;
+		}
 		UserMirror mirror = new UserMirror();
 		mirror.setId(user.getId());
 		mirror.setUsername(user.getUsername());

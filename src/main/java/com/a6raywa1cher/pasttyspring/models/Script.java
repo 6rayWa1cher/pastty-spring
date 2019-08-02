@@ -1,5 +1,7 @@
 package com.a6raywa1cher.pasttyspring.models;
 
+import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
+import com.a6raywa1cher.pasttyspring.rest.ControllerValidations;
 import lombok.Data;
 
 import javax.persistence.*;
@@ -12,17 +14,20 @@ public class Script {
 	@GeneratedValue
 	private Long id;
 
-	@Column(length = 36, unique = true)
+	@Column(length = ControllerValidations.SCRIPT_NAME_LENGTH, unique = true, nullable = false)
 	private String name;
 
-	@Column(length = 150)
+	@Column(length = ControllerValidations.SCRIPT_TITLE_LENGTH)
 	private String title;
 
-	@Column(length = 5000)
+	@Column(length = ControllerValidations.SCRIPT_DESCRIPTION_LENGTH)
 	private String description;
 
 	@ManyToOne
 	private User author;
+
+	@Column(unique = true, nullable = false)
+	private String pathToFile;
 
 	@Column
 	private LocalDateTime creationTime;
@@ -30,8 +35,12 @@ public class Script {
 	@Column
 	private boolean visible;
 
-	@Column
+	@Column(length = ControllerValidations.SCRIPT_DIALECT_LENGTH)
 	private String dialect;
+
+	@Column
+	@Enumerated(EnumType.ORDINAL)
+	private ScriptType type;
 
 	@Column
 	private Long maxComputeTime;
