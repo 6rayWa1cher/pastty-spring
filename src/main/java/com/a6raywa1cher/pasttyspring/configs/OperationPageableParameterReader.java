@@ -15,6 +15,7 @@ import springfox.documentation.builders.ParameterBuilder;
 import springfox.documentation.schema.ModelReference;
 import springfox.documentation.schema.ResolvedTypes;
 import springfox.documentation.schema.TypeNameExtractor;
+import springfox.documentation.service.AllowableRangeValues;
 import springfox.documentation.service.Parameter;
 import springfox.documentation.service.ResolvedMethodParameter;
 import springfox.documentation.spi.DocumentationType;
@@ -35,6 +36,7 @@ import static springfox.documentation.spi.schema.contexts.ModelContext.inputPara
 /**
  * https://github.com/springfox/springfox/issues/755#issuecomment-440243550
  */
+@SuppressWarnings("Guava")
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class OperationPageableParameterReader implements OperationBuilderPlugin {
@@ -76,7 +78,8 @@ public class OperationPageableParameterReader implements OperationBuilderPlugin 
 			parameters.add(new ParameterBuilder().parameterType("query")
 					.name("size")
 					.modelRef(intModel)
-					.description("Number of records per page")
+					.description("Number of records per page (150 max)")
+					.allowableValues(new AllowableRangeValues("1", "150"))
 					.build());
 			parameters.add(new ParameterBuilder().parameterType("query")
 					.name("sort")

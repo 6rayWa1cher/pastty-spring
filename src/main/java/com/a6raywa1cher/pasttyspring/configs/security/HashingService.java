@@ -1,19 +1,23 @@
 package com.a6raywa1cher.pasttyspring.configs.security;
 
-import com.a6raywa1cher.pasttyspring.configs.AuthConfig;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class HashingService {
-	private final AuthConfig authConfig;
+	private Pbkdf2PasswordEncoder passwordEncoder;
 
-	@Autowired
-	public HashingService(AuthConfig authConfig) {
-		this.authConfig = authConfig;
+	public HashingService() {
+		passwordEncoder = new Pbkdf2PasswordEncoder();
+		passwordEncoder.setAlgorithm(Pbkdf2PasswordEncoder.
+				SecretKeyFactoryAlgorithm.PBKDF2WithHmacSHA256);
 	}
 
 	public String hash(String s) {
-		return authConfig.getHash().digestAsHex(s);
+		return passwordEncoder.encode(s);
+	}
+
+	public boolean compare(String raw, String encoded) {
+		return passwordEncoder.matches(raw, encoded);
 	}
 }

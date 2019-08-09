@@ -46,9 +46,8 @@ public class AuthController {
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginDTO dto) {
 		String username = dto.getUsername();
-		String password = hashingService.hash(dto.getPassword());
-		Optional<User> user = userService.findByUsernameAndPassword(username, password);
-		if (user.isEmpty()) {
+		Optional<User> user = userService.findByUsername(username);
+		if (user.isEmpty() || !hashingService.compare(dto.getPassword(), user.get().getPassword())) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
 		Pair<JwtToken, String> pair = tokenService.createToken(user.get()).orElseThrow();

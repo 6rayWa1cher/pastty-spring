@@ -14,7 +14,11 @@ public interface ScriptService {
 
 	Optional<Script> findById(Long id);
 
-	Page<Script> findAllByVisibleAndAuthor(boolean visible, User author, Pageable pageable);
+	Page<Script> findAllByVisibleTrueAndAuthor(User author, Pageable pageable);
+
+	Page<Script> findAllByAuthor(User author, Pageable pageable);
+
+	Page<Script> findAllByVisibleTrueOrAuthor(User user, Pageable pageable);
 
 	Script save(Script script);
 }

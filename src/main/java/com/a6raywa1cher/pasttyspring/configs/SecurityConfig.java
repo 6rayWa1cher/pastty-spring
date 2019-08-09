@@ -46,7 +46,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers(HttpMethod.GET, "/actuator/**").hasAnyAuthority(RoleAsString.ADMIN)
 				.antMatchers("/v2/api-docs", "/webjars/**", "/swagger-resources", "/swagger-resources/**", "/swagger-ui.html").permitAll()
 //				.antMatchers("/ws/file_agent").authenticated()
-				.antMatchers("/script/**").anonymous()
+				.antMatchers("/script/**").permitAll()
 				// allow all who are accessing "auth" and "user" service
 				.antMatchers(HttpMethod.POST, "/auth/login", "/user/reg").permitAll()
 				.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()

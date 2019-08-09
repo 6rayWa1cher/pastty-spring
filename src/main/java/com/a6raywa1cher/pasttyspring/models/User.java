@@ -16,7 +16,7 @@ public class User {
 	@Column(length = 20)
 	private String username;
 
-	@Column
+	@Column(length = 256)
 	private String password;
 
 	@Column

@@ -1,5 +1,7 @@
 package com.a6raywa1cher.pasttyspring.rest;
 
+import com.a6raywa1cher.pasttyspring.components.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.CodeRunnerRequest;
 import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
@@ -9,23 +11,25 @@ import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NonPublicScriptUploadedByAnonymousException;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.ScriptWithProvidedNameExistsException;
 import com.a6raywa1cher.pasttyspring.rest.dto.mirror.ScriptMirror;
+import com.a6raywa1cher.pasttyspring.rest.dto.request.ExecuteScriptDTO;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.UploadScriptDTO;
+import com.a6raywa1cher.pasttyspring.rest.dto.response.ExecutionScriptResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import javax.transaction.Transactional;
 import javax.validation.Valid;
+import javax.validation.constraints.Pattern;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -37,6 +41,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @Controller
 @RequestMapping("/script")
@@ -44,12 +50,15 @@ public class ScriptController {
 	private ScriptService scriptService;
 	private AppConfig appConfig;
 	private UserService userService;
+	private CodeRunner codeRunner;
 
 	@Autowired
-	public ScriptController(ScriptService scriptService, AppConfig appConfig, UserService userService) {
+	public ScriptController(ScriptService scriptService, AppConfig appConfig, UserService userService,
+	                        CodeRunner codeRunner) {
 		this.scriptService = scriptService;
 		this.appConfig = appConfig;
 		this.userService = userService;
+		this.codeRunner = codeRunner;
 	}
 
 	public static String generateRandomName() {
@@ -101,8 +110,8 @@ public class ScriptController {
 	}
 
 	private Pageable filterPageable(Pageable pageable) {
-		if (pageable.getPageSize() > 50) {
-			pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+		if (pageable.getPageSize() > 150) {
+			pageable = PageRequest.of(pageable.getPageNumber(), 150, pageable.getSort());
 		}
 		if (pageable.getSort().getOrderFor("maxComputeTime") != null) {
 			pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
@@ -111,26 +120,32 @@ public class ScriptController {
 		return pageable;
 	}
 
-	@GetMapping("/")
+	@GetMapping("")
 	@Transactional
 	public ResponseEntity<List<ScriptMirror>> getPage(
 			@PageableDefault(sort = "creationTime", direction = Sort.Direction.DESC)
-					Pageable pageable) {
+					Pageable pageable, Authentication authentication) {
 		Pageable filtered = filterPageable(pageable);
-		Page<ScriptMirror> page = scriptService.getList(filtered).map(ScriptMirror::convert);
+		Page<ScriptMirror> page;
+		if (authentication == null) {
+			page = scriptService.getList(filtered).map(ScriptMirror::convert);
+		} else {
+			page = scriptService.findAllByVisibleTrueOrAuthor((User) authentication.getPrincipal(), filtered)
+					.map(ScriptMirror::convert);
+		}
 		return ResponseEntity.ok(page.getContent());
 	}
 
-	@GetMapping(value = "/", params = "username")
+	@GetMapping("/u/{username}")
 	@Transactional
 	public ResponseEntity<List<ScriptMirror>> getPageByUsername(
 			@PageableDefault(sort = "creationTime", direction = Sort.Direction.DESC)
-					Pageable pageable, String username, Authentication authentication
+					Pageable pageable, @PathVariable String username, Authentication authentication
 	) {
 		Pageable filtered = filterPageable(pageable);
 		if (authentication != null && ((User) authentication.getPrincipal()).getUsername().equals(username)) {
 			return ResponseEntity.ok(
-					scriptService.findAllByVisibleAndAuthor(true, (User) authentication.getPrincipal(), filtered)
+					scriptService.findAllByAuthor((User) authentication.getPrincipal(), filtered)
 							.map(ScriptMirror::convert).getContent()
 			);
 		} else {
@@ -139,9 +154,58 @@ public class ScriptController {
 				return ResponseEntity.notFound().build();
 			}
 			return ResponseEntity.ok(
-					scriptService.findAllByVisibleAndAuthor(false, optionalUser.get(), filtered)
+					scriptService.findAllByVisibleTrueAndAuthor(optionalUser.get(), filtered)
 							.map(ScriptMirror::convert).getContent()
 			);
 		}
+	}
+
+	@GetMapping("/s/{name}")
+	public ResponseEntity<ScriptMirror> get(
+			@PathVariable @Pattern(regexp = ControllerValidations.SCRIPT_NAME_REGEX)
+					String name, Authentication authentication
+	) throws IOException {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
+		Script script = optionalScript.get();
+		if (!script.isVisible() && (authentication == null ||
+				!((User) authentication.getPrincipal()).getId().equals(script.getAuthor().getId()))) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+		ScriptMirror scriptMirror = ScriptMirror.convert(script);
+		Path path = Paths.get(appConfig.getScriptsFolder(), script.getPathToFile());
+		System.out.println(path.toAbsolutePath());
+		try (FileInputStream stream = new FileInputStream(path.toFile())) {
+			String code = new String(stream.readAllBytes());
+			scriptMirror.setCode(code);
+		}
+		return ResponseEntity.ok().body(scriptMirror);
+	}
+
+	@PostMapping("/s/{name}/exec")
+	public CompletionStage<ResponseEntity<ExecutionScriptResponse>> exec(@RequestBody ExecuteScriptDTO dto,
+	                                                                     @PathVariable String name,
+	                                                                     Authentication authentication) {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return CompletableFuture.completedStage(ResponseEntity.notFound().build());
+		}
+		Script script = optionalScript.get();
+		CodeRunnerRequest request = new CodeRunnerRequest(script, dto.getStdin());
+		return codeRunner.execTask(request)
+				.thenApply(response -> {
+					ExecutionScriptResponse scriptResponse = new ExecutionScriptResponse();
+					scriptResponse.setExitCode(response.getExitCode());
+					scriptResponse.setStdout(response.getStdout());
+					return ResponseEntity.ok(scriptResponse);
+				})
+				.exceptionally(throwable -> {
+					ExecutionScriptResponse scriptResponse = new ExecutionScriptResponse();
+					scriptResponse.setExitCode(-1);
+					scriptResponse.setStdout(throwable.getMessage());
+					return ResponseEntity.ok(scriptResponse);
+				});
 	}
 }

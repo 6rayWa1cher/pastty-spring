@@ -1,11 +1,11 @@
 app:
   auth:
     jwt-secret-key: vIy3Wg073BAzHR4aWdhJQt8HYrLCqXsGLf8r7NcimRJYHDY4NqyCXoWsNFJCnn3
-    hash: SHA3-256
     session-duration: P30D
   scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
   exec-script:
     environments:
       - name: python
+        compile: "cmd.exe /c copy \"{1}\" \"{2}\""
         exec: "python {1}"
-        filename: "{1}.py"
+        sourceFilename: "{1}.py"

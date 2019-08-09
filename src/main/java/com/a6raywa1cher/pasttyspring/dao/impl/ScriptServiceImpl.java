@@ -35,9 +35,18 @@ public class ScriptServiceImpl implements ScriptService {
 		return repository.findById(id);
 	}
 
+	public Page<Script> findAllByVisibleTrueAndAuthor(User author, Pageable pageable) {
+		return repository.findAllByVisibleTrueAndAuthor(author, pageable);
+	}
+
 	@Override
-	public Page<Script> findAllByVisibleAndAuthor(boolean visible, User author, Pageable pageable) {
-		return repository.findAllByVisibleAndAuthor(visible, author, pageable);
+	public Page<Script> findAllByAuthor(User author, Pageable pageable) {
+		return repository.findAllByAuthor(author, pageable);
+	}
+
+	@Override
+	public Page<Script> findAllByVisibleTrueOrAuthor(User user, Pageable pageable) {
+		return repository.findAllByVisibleTrueOrAuthor(user, pageable);
 	}
 
 	@Override

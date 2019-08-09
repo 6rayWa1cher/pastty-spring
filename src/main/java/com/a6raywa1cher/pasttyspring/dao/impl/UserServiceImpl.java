@@ -18,11 +18,6 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public Optional<User> findByUsernameAndPassword(String username, String password) {
-		return repository.findByUsernameAndPassword(username, password);
-	}
-
-	@Override
 	public Optional<User> findByUsername(String username) {
 		return repository.findByUsername(username);
 	}

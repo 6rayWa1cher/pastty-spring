@@ -22,6 +22,8 @@ public class ScriptMirror {
 
 	private boolean visible;
 
+	private String code;
+
 	private String dialect;
 
 	private ScriptType type;
@@ -33,6 +35,7 @@ public class ScriptMirror {
 		ScriptMirror mirror = new ScriptMirror();
 		mirror.setId(script.getId());
 		mirror.setName(script.getName());
+		mirror.setTitle(script.getTitle());
 		mirror.setDescription(script.getDescription());
 		mirror.setAuthor(UserMirror.convert(script.getAuthor()));
 		mirror.setCreationTime(script.getCreationTime());
