@@ -75,7 +75,7 @@ public class CodeRunner {
 					}
 				})
 				.thenApply(v -> {
-					try (ExecutorTask task = new ExecutorTask(request, folderWithCompiled)) {
+					try (ExecutorTask task = new ExecutorTask(request, folderWithCompiled, compiled)) {
 						Future<CodeRunnerResponse> responseFuture = executorService.invokeAll(
 								Collections.singleton(task),
 								request.getToExec().getMaxComputeTime(), TimeUnit.MILLISECONDS).get(0);
@@ -90,22 +90,24 @@ public class CodeRunner {
 	final class ExecutorTask implements Callable<CodeRunnerResponse>, AutoCloseable {
 		private final CodeRunnerRequest request;
 		private final Path execDir;
+		private final Path compiled;
 		private Process process;
 
-		ExecutorTask(CodeRunnerRequest request, Path execDir) {
+		ExecutorTask(CodeRunnerRequest request, Path execDir, Path compiled) {
 			this.request = request;
 			this.execDir = execDir;
+			this.compiled = compiled;
 		}
 
 		@Override
 		public CodeRunnerResponse call() throws Exception {
 			Script script = request.getToExec();
-			Path parent = Path.of(appConfig.getScriptsFolder()).toAbsolutePath();
-			Path path = Path.of(parent.toString(), script.getPathToFile()).toAbsolutePath();
-			String preparedCommand = config.getEnvironment(script.getDialect())
-					.prepareExec(path);
+			ExecScriptsConfig.RunnerEnvironmentConfig runnerEnvironmentConfig =
+					config.getEnvironment(script.getDialect());
+			String preparedCommand = runnerEnvironmentConfig
+					.prepareExec(compiled);
 			process = Runtime.getRuntime().exec(preparedCommand, new String[]{}, execDir.toFile());
-			log.info("Running process... info:{}", process.info());
+			log.info("Running process... command:{} info:{}", preparedCommand, process.info());
 			try (BufferedReader processOutput = new BufferedReader(new InputStreamReader(new SequenceInputStream(process.getInputStream(), process.getErrorStream())),
 					1024 * 1024);
 			     BufferedWriter processInput = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {

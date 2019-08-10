@@ -6,6 +6,8 @@ app:
   exec-script:
     environments:
       - name: python
-        compile: "cmd.exe /c copy \"{1}\" \"{2}\""
         exec: "python {1}"
         sourceFilename: "{1}.py"
+      - name: java12
+        exec: "java {1}"
+        sourceFilename: "{1}.java"

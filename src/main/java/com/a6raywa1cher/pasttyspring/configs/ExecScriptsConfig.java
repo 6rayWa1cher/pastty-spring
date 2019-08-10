@@ -38,7 +38,6 @@ public class ExecScriptsConfig {
 		 * and '{3}' for compiled directory.
 		 * If not compilable, put 'cp {1} {2}' or 'copy {1} {2}'
 		 */
-		@NotBlank
 		private String compile;
 
 		/**
@@ -57,7 +56,16 @@ public class ExecScriptsConfig {
 		private String compiledFilename;
 
 		public String prepareCompile(Path sourcePath, Path compiledPath) {
-			return compile
+			String localCompile = compile;
+			if (localCompile == null) {
+				boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+				if (isWindows) {
+					localCompile = "cmd.exe /c copy \"{1}\" \"{2}\"";
+				} else {
+					localCompile = "sh -c cp {1} {2}";
+				}
+			}
+			return localCompile
 					.replace("{1}", sourcePath.toAbsolutePath().toString())
 					.replace("{2}", compiledPath.toAbsolutePath().toString())
 					.replace("{3}", compiledPath.getParent().toAbsolutePath().toString());
