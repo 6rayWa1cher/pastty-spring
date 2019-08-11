@@ -22,6 +22,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
@@ -41,7 +44,7 @@ public class CodeRunnerTests {
 	@Test
 	public void execTest() throws Exception {
 		Files.createDirectories(Path.of("testsScriptsFolder"));
-		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("testsScriptsFolder/javatest")))) {
+		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("testsScriptsFolder/javatest1")))) {
 			writer.write(
 					"import java.util.Scanner;\n\n" +
 							"public class Main {\n\n" +
@@ -56,7 +59,7 @@ public class CodeRunnerTests {
 		Script script = new Script();
 		script.setDialect("java");
 		script.setType(ScriptType.EXEC_SCRIPT);
-		script.setPathToFile("javatest");
+		script.setPathToFile("javatest1");
 		script.setMaxComputeTime(1000L);
 
 		CodeRunnerRequest request = new CodeRunnerRequest(script, "2\n3\n");
@@ -64,6 +67,34 @@ public class CodeRunnerTests {
 		Assert.assertEquals("5", response.getStdout());
 		Assert.assertEquals(0, response.getExitCode());
 		Assert.assertEquals(request, response.getRequest());
+	}
+
+	@Test
+	public void infiniteLoopTest() throws Exception {
+		Files.createDirectories(Path.of("testsScriptsFolder"));
+		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("testsScriptsFolder/javatest2")))) {
+			writer.write(
+					"import java.util.Scanner;\n\n" +
+							"public class Main {\n\n" +
+							"    public static void main(String[] args) {\n" +
+							"        while(true) {}\n" +
+							"    }\n" +
+							"}\n");
+		}
+		Script script = new Script();
+		script.setDialect("java");
+		script.setType(ScriptType.EXEC_SCRIPT);
+		script.setPathToFile("javatest2");
+		script.setMaxComputeTime(1000L);
+
+		CodeRunnerRequest request = new CodeRunnerRequest(script, "2\n3\n");
+		try {
+			codeRunner.execTask(request).get(2000, TimeUnit.MILLISECONDS);
+		} catch (TimeoutException time) {
+			Assert.fail();
+		} catch (ExecutionException ce) {
+			System.out.println("Test passed.");
+		}
 	}
 
 	@After
