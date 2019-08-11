@@ -4,6 +4,8 @@ app:
     session-duration: P30D
   scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
   exec-script:
+    buffer-size: 1048576
+    max-output-size: 1048576
     environments:
       - name: python
         exec: "python {1}"

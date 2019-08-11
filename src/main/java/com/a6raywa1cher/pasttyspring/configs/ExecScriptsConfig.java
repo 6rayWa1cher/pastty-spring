@@ -19,6 +19,16 @@ public class ExecScriptsConfig {
 	 */
 	private List<RunnerEnvironmentConfig> environments;
 
+	/**
+	 * Size of script's output buffer (BufferedReader).
+	 */
+	private int bufferSize;
+
+	/**
+	 * Maximum length of stdout.
+	 */
+	private int maxOutputSize;
+
 	public RunnerEnvironmentConfig getEnvironment(String name) {
 		return environments.stream().filter(rec -> rec.getName().equals(name)).findAny().orElseThrow();
 	}

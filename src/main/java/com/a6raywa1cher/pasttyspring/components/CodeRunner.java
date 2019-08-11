@@ -109,9 +109,9 @@ public class CodeRunner {
 			process = Runtime.getRuntime().exec(preparedCommand, new String[]{}, execDir.toFile());
 			log.info("Running process... command:{} info:{}", preparedCommand, process.info());
 			try (BufferedReader processOutput = new BufferedReader(new InputStreamReader(new SequenceInputStream(process.getInputStream(), process.getErrorStream())),
-					1024 * 1024);
+					config.getBufferSize());
 			     BufferedWriter processInput = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {
-				StringBuilder stdout = new StringBuilder();
+				StringBuilder stdout = new StringBuilder(config.getMaxOutputSize());
 				processInput.write(request.getStdin());
 				processInput.flush();
 				processInput.close();
@@ -119,7 +119,7 @@ public class CodeRunner {
 				while (process.isAlive() || processOutput.ready()) {
 					line = processOutput.readLine();
 					if (line != null) stdout.append(line);
-					if (stdout.length() > 1024 * 1024) {
+					if (stdout.length() > config.getMaxOutputSize()) {
 						break;
 					}
 				}

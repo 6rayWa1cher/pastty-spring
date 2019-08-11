@@ -7,10 +7,15 @@ import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
+import com.a6raywa1cher.pasttyspring.models.enums.Role;
+import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
+import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NoEnoughRightsForChangeException;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NonPublicScriptUploadedByAnonymousException;
+import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NotExecScriptException;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.ScriptWithProvidedNameExistsException;
 import com.a6raywa1cher.pasttyspring.rest.dto.mirror.ScriptMirror;
+import com.a6raywa1cher.pasttyspring.rest.dto.request.ChangeTypeDTO;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.ExecuteScriptDTO;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.UploadScriptDTO;
 import com.a6raywa1cher.pasttyspring.rest.dto.response.ExecutionScriptResponse;
@@ -19,9 +24,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.util.Pair;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -37,10 +44,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -184,15 +188,44 @@ public class ScriptController {
 		return ResponseEntity.ok().body(scriptMirror);
 	}
 
+	@PostMapping("/s/{name}/change_type")
+	@Secured(RoleAsString.USER)
+	public ResponseEntity<ScriptMirror> changeType(@RequestBody @Valid ChangeTypeDTO dto,
+	                                               @PathVariable String name,
+	                                               Authentication authentication) {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
+		Script script = optionalScript.get();
+		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
+		if (!isModerator) {
+			Set<Pair<ScriptType, ScriptType>> permitted = new HashSet<>();
+			permitted.add(Pair.of(ScriptType.SCRIPT, ScriptType.REQUESTED_MODERATION));
+			permitted.add(Pair.of(ScriptType.REQUESTED_MODERATION, ScriptType.SCRIPT));
+			permitted.add(Pair.of(ScriptType.EXEC_SCRIPT, ScriptType.SCRIPT));
+			ScriptType from = script.getType();
+			ScriptType to = dto.getType();
+			if (!permitted.contains(Pair.of(from, to))) {
+				throw new NoEnoughRightsForChangeException();
+			}
+		}
+		script.setType(dto.getType());
+		return ResponseEntity.ok(ScriptMirror.convert(scriptService.save(script)));
+	}
+
 	@PostMapping("/s/{name}/exec")
-	public CompletionStage<ResponseEntity<ExecutionScriptResponse>> exec(@RequestBody ExecuteScriptDTO dto,
-	                                                                     @PathVariable String name,
-	                                                                     Authentication authentication) {
+	@Secured(RoleAsString.USER)
+	public CompletionStage<ResponseEntity<ExecutionScriptResponse>> exec(@RequestBody @Valid ExecuteScriptDTO dto,
+	                                                                     @PathVariable String name) {
 		Optional<Script> optionalScript = scriptService.findByName(name);
 		if (optionalScript.isEmpty()) {
 			return CompletableFuture.completedStage(ResponseEntity.notFound().build());
 		}
 		Script script = optionalScript.get();
+		if (!script.getType().equals(ScriptType.EXEC_SCRIPT)) {
+			throw new NotExecScriptException();
+		}
 		CodeRunnerRequest request = new CodeRunnerRequest(script, dto.getStdin());
 		return codeRunner.execTask(request)
 				.thenApply(response -> {
