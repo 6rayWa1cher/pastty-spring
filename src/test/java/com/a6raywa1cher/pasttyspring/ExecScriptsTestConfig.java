@@ -6,6 +6,7 @@ import com.a6raywa1cher.pasttyspring.configs.ExecScriptsConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 @Configuration
@@ -25,7 +26,12 @@ public class ExecScriptsTestConfig {
 		ExecScriptsConfig.RunnerEnvironmentConfig config = new ExecScriptsConfig.RunnerEnvironmentConfig();
 		config.setName("java");
 		config.setSourceFilename("{1}.java");
-		config.setExec("java {1}");
+		config.setCompiledFilename("Main.class");
+		config.setCompile(Arrays.asList(
+				"cp {1} {3}/Main.java",
+				"javac -d {3} {3}/Main.java"
+		));
+		config.setExec("java Main");
 		execScriptsConfig.setEnvironments(Collections.singletonList(config));
 		return new CodeRunner(appConfig, execScriptsConfig);
 	}

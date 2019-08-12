@@ -11,5 +11,8 @@ app:
         exec: "python {1}"
         sourceFilename: "{1}.py"
       - name: java12
+        compile:
+          - "cp {1} {3}/Main.java"
+          - "javac -d {3} {3}/Main.java"
         exec: "java {1}"
         sourceFilename: "{1}.java"

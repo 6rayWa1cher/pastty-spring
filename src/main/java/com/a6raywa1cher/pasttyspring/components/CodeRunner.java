@@ -47,29 +47,28 @@ public class CodeRunner {
 				runnerEnvironmentConfig.prepareCompiledFilename(uniqueName));
 		log.info("script:{} folderCompiled:{} sources:{} compiled:{}",
 				script.getId(), folderWithCompiled, sources, compiled);
-		return CompletableFuture.supplyAsync(() -> null, executorService)
-				.thenCompose(v -> {
+		CompletableFuture<Void> chain = CompletableFuture.supplyAsync(() -> null, executorService);
+		if (!folderWithCompiled.toFile().exists())
+			for (String[] preparedCompileCommand : runnerEnvironmentConfig.prepareCompile(sources, compiled)) {
+				chain = chain.thenCompose(v -> {
 					try {
-						if (!folderWithCompiled.toFile().exists()) {
-							Files.createDirectories(folderWithCompiled);
-							String compileCommand = runnerEnvironmentConfig.prepareCompile(sources, compiled);
-							return Runtime.getRuntime().exec(compileCommand, new String[]{},
-									folderWithCompiled.toFile()).onExit();
-						} else {
-							return CompletableFuture.completedFuture(null);
-						}
+						Files.createDirectories(folderWithCompiled);
+						log.warn(String.join(" ", preparedCompileCommand));
+						return Runtime.getRuntime().exec(preparedCompileCommand, new String[]{},
+								folderWithCompiled.toFile()).onExit();
 					} catch (IOException e) {
 						throw new RuntimeException(e);
 					}
-				})
-				.thenAccept(process -> {
+				}).thenAccept(process -> {
 					if (process != null && process.exitValue() != 0) {
-						throw new RuntimeException("Compilation not successful. " +
+						throw new RuntimeException("Compilation not successful. command array:" + String.join(" ", preparedCompileCommand) +
 								new BufferedReader(new InputStreamReader(process.getErrorStream())).lines()
-										.collect(Collectors.joining())
+										.collect(Collectors.joining("\n"))
 						);
 					}
-				})
+				});
+			}
+		return chain
 				.exceptionally(throwable -> {
 					try {
 						FileUtils.deleteDirectory(folderWithCompiled.toFile());
