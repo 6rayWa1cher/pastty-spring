@@ -89,7 +89,7 @@ public class CodeRunnerTests {
 
 		CodeRunnerRequest request = new CodeRunnerRequest(script, "2\n3\n");
 		try {
-			codeRunner.execTask(request).get(2000, TimeUnit.MILLISECONDS);
+			codeRunner.execTask(request).get(5000, TimeUnit.MILLISECONDS);
 		} catch (TimeoutException time) {
 			Assert.fail();
 		} catch (ExecutionException ce) {

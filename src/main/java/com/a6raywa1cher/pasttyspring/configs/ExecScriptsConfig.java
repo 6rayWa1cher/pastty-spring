@@ -7,7 +7,9 @@ import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotBlank;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @PropertySource("classpath:appconfig.yml")
@@ -48,7 +50,7 @@ public class ExecScriptsConfig {
 		 * and '{3}' for compiled directory.
 		 * If not compilable, put 'cp {1} {2}' or 'copy {1} {2}'
 		 */
-		private String compile;
+		private List<String> compile;
 
 		/**
 		 * Shell command to execute script with '{1}' as placeholder for compiled absolute path.
@@ -65,20 +67,27 @@ public class ExecScriptsConfig {
 		 */
 		private String compiledFilename;
 
-		public String prepareCompile(Path sourcePath, Path compiledPath) {
-			String localCompile = compile;
-			if (localCompile == null) {
-				boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+		public List<String[]> prepareCompile(Path sourcePath, Path compiledPath) {
+			List<String> localCompile = new ArrayList<>();
+			boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+			if (compile == null) {
 				if (isWindows) {
-					localCompile = "cmd.exe /c copy \"{1}\" \"{2}\"";
+//					localCompile = "cmd.exe /c copy \"{1}\" \"{2}\"";
+					localCompile.add("copy \"{1}\" \"{2}\"");
 				} else {
-					localCompile = "sh -c cp {1} {2}";
+//					localCompile = "sh -c \"cp \"{1}\" \"{2}\"\"";
+					localCompile.add("cp {1} {2}");
 				}
+			} else {
+				localCompile.addAll(compile);
 			}
-			return localCompile
+			return localCompile.stream().map(str -> str
 					.replace("{1}", sourcePath.toAbsolutePath().toString())
 					.replace("{2}", compiledPath.toAbsolutePath().toString())
-					.replace("{3}", compiledPath.getParent().toAbsolutePath().toString());
+					.replace("{3}", compiledPath.getParent().toAbsolutePath().toString()))
+					.map(str -> isWindows ? new String[]{"cmd.exe", "/c", str} :
+							new String[]{"sh", "-c", str})
+					.collect(Collectors.toList());
 		}
 
 		public String prepareExec(Path compiledPath) {
