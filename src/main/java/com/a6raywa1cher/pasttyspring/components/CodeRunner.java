@@ -121,7 +121,7 @@ public class CodeRunner {
 					config.getEnvironment(script.getDialect());
 			String preparedCommand = runnerEnvironmentConfig
 					.prepareExec(compiled);
-			if (process == null) {
+			if (processes == null) {
 				return null;
 			}
 			process = Runtime.getRuntime().exec(preparedCommand, new String[]{}, execDir.toFile());
