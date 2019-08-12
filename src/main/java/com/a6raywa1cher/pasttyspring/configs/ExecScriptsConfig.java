@@ -85,8 +85,8 @@ public class ExecScriptsConfig {
 					.replace("{1}", sourcePath.toAbsolutePath().toString())
 					.replace("{2}", compiledPath.toAbsolutePath().toString())
 					.replace("{3}", compiledPath.getParent().toAbsolutePath().toString()))
-					.map(str -> isWindows ? new String[]{"cmd.exe", "/c", str} :
-							new String[]{"sh", "-c", str})
+					.map(str -> str.startsWith("{!}") ? new String[]{str.substring(3)} :
+							(isWindows ? new String[]{"cmd.exe", "/C", str} : new String[]{"sh", "-c", str}))
 					.collect(Collectors.toList());
 		}
 

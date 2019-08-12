@@ -27,10 +27,18 @@ public class ExecScriptsTestConfig {
 		config.setName("java");
 		config.setSourceFilename("{1}.java");
 		config.setCompiledFilename("Main.class");
-		config.setCompile(Arrays.asList(
-				"cp {1} {3}/Main.java",
-				"javac -d {3} {3}/Main.java"
-		));
+		boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+		if (isWindows) {
+			config.setCompile(Arrays.asList(
+					"copy {1} {3}\\Main.java",
+					"{!}javac -d {3} {3}\\Main.java"
+			));
+		} else {
+			config.setCompile(Arrays.asList(
+					"cp {1} {3}/Main.java",
+					"javac -d {3} {3}/Main.java"
+			));
+		}
 		config.setExec("java Main");
 		execScriptsConfig.setEnvironments(Collections.singletonList(config));
 		return new CodeRunner(appConfig, execScriptsConfig);

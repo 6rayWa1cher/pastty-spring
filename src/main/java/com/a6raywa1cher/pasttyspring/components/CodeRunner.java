@@ -54,17 +54,26 @@ public class CodeRunner {
 					try {
 						Files.createDirectories(folderWithCompiled);
 						log.warn(String.join(" ", preparedCompileCommand));
-						return Runtime.getRuntime().exec(preparedCompileCommand, new String[]{},
-								folderWithCompiled.toFile()).onExit();
+						if (preparedCompileCommand.length == 1) {
+							return Runtime.getRuntime().exec(preparedCompileCommand[0], new String[]{},
+									folderWithCompiled.toFile()).onExit();
+						} else {
+							return Runtime.getRuntime().exec(preparedCompileCommand, new String[]{},
+									folderWithCompiled.toFile()).onExit();
+						}
 					} catch (IOException e) {
 						throw new RuntimeException(e);
 					}
 				}).thenAccept(process -> {
-					if (process != null && process.exitValue() != 0) {
-						throw new RuntimeException("Compilation not successful. command array:" + String.join(" ", preparedCompileCommand) +
-								new BufferedReader(new InputStreamReader(process.getErrorStream())).lines()
-										.collect(Collectors.joining("\n"))
-						);
+					try {
+						if (process != null && process.exitValue() != 0) {
+							throw new RuntimeException("Compilation not successful. command array:" + String.join(" ", preparedCompileCommand) + "\n" +
+									new BufferedReader(new InputStreamReader(process.getErrorStream(), "866")).lines()
+											.collect(Collectors.joining("\n"))
+							);
+						}
+					} catch (UnsupportedEncodingException e) {
+						e.printStackTrace();
 					}
 				});
 			}
