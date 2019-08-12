@@ -9,10 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -21,6 +24,7 @@ public class CodeRunner {
 	private static final Logger log = LoggerFactory.getLogger(CodeRunner.class);
 	private final AppConfig appConfig;
 	private final ExecScriptsConfig config;
+	private Set<Process> processes;
 	private ExecutorService executorService;
 
 	@Autowired
@@ -28,6 +32,7 @@ public class CodeRunner {
 		this.appConfig = appConfig;
 		this.config = config;
 		this.executorService = new ForkJoinPool();
+		this.processes = new LinkedHashSet<>();
 	}
 
 	public CompletableFuture<CodeRunnerResponse> execTask(CodeRunnerRequest request) {
@@ -87,7 +92,18 @@ public class CodeRunner {
 				});
 	}
 
-	final class ExecutorTask implements Callable<CodeRunnerResponse>, AutoCloseable {
+	@PreDestroy
+	public void onDestroy() throws Exception {
+		log.info("Going destroy {} processes", processes.size());
+		Set<Process> clone = new LinkedHashSet<>(processes);
+		processes = null;
+		for (Process p : clone) {
+			p.destroyForcibly().waitFor();
+		}
+		log.info("Destroy completed");
+	}
+
+	class ExecutorTask implements Callable<CodeRunnerResponse>, AutoCloseable {
 		private final CodeRunnerRequest request;
 		private final Path execDir;
 		private final Path compiled;
@@ -106,7 +122,11 @@ public class CodeRunner {
 					config.getEnvironment(script.getDialect());
 			String preparedCommand = runnerEnvironmentConfig
 					.prepareExec(compiled);
+			if (process == null) {
+				return null;
+			}
 			process = Runtime.getRuntime().exec(preparedCommand, new String[]{}, execDir.toFile());
+			processes.add(process);
 			log.info("Running process... command:{} info:{}", preparedCommand, process.info());
 			try (BufferedReader processOutput = new BufferedReader(new InputStreamReader(new SequenceInputStream(process.getInputStream(), process.getErrorStream())),
 					config.getBufferSize());
@@ -127,12 +147,16 @@ public class CodeRunner {
 			} finally {
 				System.out.println("CLOSING");
 				process.destroy();
+				processes.remove(process);
 			}
 		}
 
 		@Override
 		public void close() {
-			if (process != null) process.destroyForcibly();
+			if (process != null) {
+				process.destroyForcibly();
+				processes.remove(process);
+			}
 		}
 	}
 }

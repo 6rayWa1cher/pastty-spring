@@ -1,5 +1,7 @@
 package com.a6raywa1cher.pasttyspring;
 
+import com.a6raywa1cher.pasttyspring.components.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.CodeRunnerResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.hamcrest.BaseMatcher;
@@ -9,6 +11,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.core.AutoConfigureCache;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -16,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -27,6 +32,8 @@ import org.springframework.web.context.WebApplicationContext;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,16 +44,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
 		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-		"app.scripts-folder=testsScriptsFolder"
+		"app.scripts-folder=testsScriptsFolder",
+		"spring.main.allow-bean-definition-overriding=true"
 })
 @AutoConfigureCache
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase
 @AutoConfigureTestEntityManager
+@ActiveProfiles("test")
 public class PasttySpringApplicationTests {
 
 	@Autowired
 	private WebApplicationContext wac;
+
+	@Autowired
+	private CodeRunner codeRunner;
 
 	private MockMvc mockMvc;
 
@@ -58,6 +70,12 @@ public class PasttySpringApplicationTests {
 				.apply(springSecurity())
 				.build();
 		objectMapper = new ObjectMapper();
+		Executor executor = Executors.newSingleThreadExecutor();
+		Mockito.when(codeRunner.execTask(Mockito.any())).then(
+				(Answer<CompletableFuture<CodeRunnerResponse>>) invocation ->
+						CompletableFuture.supplyAsync(
+								() -> new CodeRunnerResponse(invocation.getArgument(0), 0, "mock")
+								, executor));
 	}
 
 	@Test
@@ -238,21 +256,6 @@ public class PasttySpringApplicationTests {
 				.andExpect(jsonPath("$.name").value(name));
 	}
 
-	@Test
-	public void itsNotTest() throws Exception {
-		CompletableFuture<Void> cf = new CompletableFuture<>();
-		cf.cancel(false);
-		CompletableFuture.supplyAsync(() -> null)
-				.thenCombine(cf, (v1, v2) -> {
-					System.out.println("Normally.");
-					return null;
-				})
-				.exceptionally(throwable -> {
-					System.out.println("Exceptionally.");
-					throwable.printStackTrace();
-					return null;
-				}).get();
-	}
 
 	@After
 	public void teardown() throws IOException {
