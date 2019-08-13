@@ -1,25 +1,21 @@
 package com.a6raywa1cher.pasttyspring;
 
-import com.a6raywa1cher.pasttyspring.components.CodeRunner;
-import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.configs.ExecScriptsConfig;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.*;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 
 import java.util.Arrays;
 import java.util.Collections;
 
-@Configuration
-@Import(PasttySpringApplication.class)
+@TestConfiguration
 @Profile("cr_test")
 public class ExecScriptsTestConfig {
 
-	@Autowired
-	private AppConfig appConfig;
-
 	@Bean
 	@Primary
-	public CodeRunner codeRunner() {
+	public ExecScriptsConfig execScriptsConfig() {
 		ExecScriptsConfig execScriptsConfig = new ExecScriptsConfig();
 		execScriptsConfig.setBufferSize(1048576);
 		execScriptsConfig.setMaxOutputSize(1048576);
@@ -41,6 +37,6 @@ public class ExecScriptsTestConfig {
 		}
 		config.setExec("java Main");
 		execScriptsConfig.setEnvironments(Collections.singletonList(config));
-		return new CodeRunner(appConfig, execScriptsConfig);
+		return execScriptsConfig;
 	}
 }

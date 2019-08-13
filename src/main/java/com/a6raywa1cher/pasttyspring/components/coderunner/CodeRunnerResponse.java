@@ -1,4 +1,4 @@
-package com.a6raywa1cher.pasttyspring.components;
+package com.a6raywa1cher.pasttyspring.components.coderunner;
 
 import lombok.Data;
 

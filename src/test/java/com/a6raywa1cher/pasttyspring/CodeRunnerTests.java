@@ -1,8 +1,8 @@
 package com.a6raywa1cher.pasttyspring;
 
-import com.a6raywa1cher.pasttyspring.components.CodeRunner;
-import com.a6raywa1cher.pasttyspring.components.CodeRunnerRequest;
-import com.a6raywa1cher.pasttyspring.components.CodeRunnerResponse;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunnerRequest;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunnerResponse;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
@@ -15,8 +15,11 @@ import org.springframework.boot.test.autoconfigure.core.AutoConfigureCache;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager;
+import org.springframework.boot.test.context.ConfigFileApplicationContextInitializer;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.*;
@@ -32,11 +35,14 @@ import java.util.concurrent.TimeoutException;
 		"app.scripts-folder=testsScriptsFolder",
 		"spring.main.allow-bean-definition-overriding=true"
 })
+@TestPropertySource("classpath:appconfig.yml")
+@ContextConfiguration(initializers = ConfigFileApplicationContextInitializer.class)
 @AutoConfigureCache
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase
 @AutoConfigureTestEntityManager
 @ActiveProfiles("cr_test")
+//@Import(ExecScriptsTestConfig.class)
 public class CodeRunnerTests {
 	@Autowired
 	private CodeRunner codeRunner;

@@ -1,6 +1,6 @@
 package com.a6raywa1cher.pasttyspring;
 
-import com.a6raywa1cher.pasttyspring.components.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
 import org.mockito.Mockito;
 import org.springframework.context.annotation.*;
 

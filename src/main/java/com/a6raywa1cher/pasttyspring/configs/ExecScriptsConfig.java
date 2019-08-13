@@ -2,7 +2,7 @@ package com.a6raywa1cher.pasttyspring.configs;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotBlank;
@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
-@PropertySource("classpath:appconfig.yml")
+@Configuration
+//@PropertySource("classpath:appconfig.yml")
 @ConfigurationProperties(prefix = "app.exec-script")
 @Validated
 public class ExecScriptsConfig {
@@ -33,6 +34,10 @@ public class ExecScriptsConfig {
 
 	public RunnerEnvironmentConfig getEnvironment(String name) {
 		return environments.stream().filter(rec -> rec.getName().equals(name)).findAny().orElseThrow();
+	}
+
+	public ExecScriptsConfig() {
+		int a = 2;
 	}
 
 	@Validated

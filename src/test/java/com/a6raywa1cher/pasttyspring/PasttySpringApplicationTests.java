@@ -1,7 +1,7 @@
 package com.a6raywa1cher.pasttyspring;
 
-import com.a6raywa1cher.pasttyspring.components.CodeRunner;
-import com.a6raywa1cher.pasttyspring.components.CodeRunnerResponse;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunnerResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.hamcrest.BaseMatcher;

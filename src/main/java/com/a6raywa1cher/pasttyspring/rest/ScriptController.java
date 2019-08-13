@@ -1,7 +1,7 @@
 package com.a6raywa1cher.pasttyspring.rest;
 
-import com.a6raywa1cher.pasttyspring.components.CodeRunner;
-import com.a6raywa1cher.pasttyspring.components.CodeRunnerRequest;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
+import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunnerRequest;
 import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
