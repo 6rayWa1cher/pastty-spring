@@ -15,10 +15,9 @@ import org.springframework.boot.test.autoconfigure.core.AutoConfigureCache;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager;
-import org.springframework.boot.test.context.ConfigFileApplicationContextInitializer;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -32,17 +31,17 @@ import java.util.concurrent.TimeoutException;
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
 		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-		"app.scripts-folder=testsScriptsFolder",
-		"spring.main.allow-bean-definition-overriding=true"
+		"app.scripts-folder=testsScriptsFolder"
+//		"spring.main.allow-bean-definition-overriding=true"
 })
 @TestPropertySource("classpath:appconfig.yml")
-@ContextConfiguration(initializers = ConfigFileApplicationContextInitializer.class)
+//@ContextConfiguration(classes = ExecScriptsTestConfig.class)
 @AutoConfigureCache
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase
 @AutoConfigureTestEntityManager
 @ActiveProfiles("cr_test")
-//@Import(ExecScriptsTestConfig.class)
+@Import(ExecScriptsTestConfig.class)
 public class CodeRunnerTests {
 	@Autowired
 	private CodeRunner codeRunner;

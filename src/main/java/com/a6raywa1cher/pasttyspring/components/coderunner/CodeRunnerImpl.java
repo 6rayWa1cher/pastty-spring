@@ -56,7 +56,7 @@ public class CodeRunnerImpl implements CodeRunner {
 		log.info("script:{} folderCompiled:{} sources:{} compiled:{}",
 				script.getId(), folderWithCompiled, sources, compiled);
 		CompletableFuture<Void> chain = CompletableFuture.supplyAsync(() -> null, executorService);
-		boolean isCompiled = !folderWithCompiled.toFile().exists();
+		boolean isCompiled = folderWithCompiled.toFile().exists();
 		if (!isCompiled) {
 			for (String[] preparedCompileCommand : commandCompiler.prepareCompile(runnerEnvironmentConfig, sources, compiled)) {
 				chain = chain.thenCompose(v -> {

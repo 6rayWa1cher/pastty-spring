@@ -1,22 +1,26 @@
 package com.a6raywa1cher.pasttyspring;
 
 import com.a6raywa1cher.pasttyspring.configs.ExecScriptsConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
+import javax.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.Collections;
 
 @TestConfiguration
 @Profile("cr_test")
 public class ExecScriptsTestConfig {
+	private ExecScriptsConfig execScriptsConfig;
 
-	@Bean
-	@Primary
-	public ExecScriptsConfig execScriptsConfig() {
-		ExecScriptsConfig execScriptsConfig = new ExecScriptsConfig();
+	@Autowired
+	public ExecScriptsTestConfig(ExecScriptsConfig execScriptsConfig) {
+		this.execScriptsConfig = execScriptsConfig;
+	}
+
+	@PostConstruct
+	public void execScriptsConfig() {
 		execScriptsConfig.setBufferSize(1048576);
 		execScriptsConfig.setMaxOutputSize(1048576);
 		ExecScriptsConfig.RunnerEnvironmentConfig config = new ExecScriptsConfig.RunnerEnvironmentConfig();
@@ -37,6 +41,5 @@ public class ExecScriptsTestConfig {
 		}
 		config.setExec("java Main");
 		execScriptsConfig.setEnvironments(Collections.singletonList(config));
-		return execScriptsConfig;
 	}
 }
