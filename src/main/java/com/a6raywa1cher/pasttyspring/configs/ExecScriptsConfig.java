@@ -2,7 +2,7 @@ package com.a6raywa1cher.pasttyspring.configs;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotBlank;
@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
-@Component
-//@PropertySource("classpath:appconfig.yml")
+@Configuration
 @ConfigurationProperties(prefix = "app.exec-script")
 @Validated
 public class ExecScriptsConfig {

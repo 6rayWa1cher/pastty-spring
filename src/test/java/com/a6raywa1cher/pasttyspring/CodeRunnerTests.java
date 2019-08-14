@@ -18,7 +18,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.*;
@@ -34,7 +33,7 @@ import java.util.concurrent.TimeoutException;
 		"app.scripts-folder=testsScriptsFolder"
 //		"spring.main.allow-bean-definition-overriding=true"
 })
-@TestPropertySource("classpath:appconfig.yml")
+//@TestPropertySource("classpath:appconfig.yml")
 //@ContextConfiguration(classes = ExecScriptsTestConfig.class)
 @AutoConfigureCache
 @AutoConfigureDataJpa
