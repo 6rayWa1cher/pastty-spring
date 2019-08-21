@@ -23,6 +23,11 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
+	public boolean isAnyoneElseRegistered() {
+		return repository.count() > 0;
+	}
+
+	@Override
 	public User save(User user) {
 		return repository.save(user);
 	}

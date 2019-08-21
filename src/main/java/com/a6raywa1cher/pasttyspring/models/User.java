@@ -2,12 +2,14 @@ package com.a6raywa1cher.pasttyspring.models;
 
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.persistence.*;
 import java.util.List;
 
 @Entity
 @Data
+@EqualsAndHashCode(exclude = {"scripts", "jwtTokens"})
 public class User {
 	@Id
 	@GeneratedValue
@@ -28,4 +30,14 @@ public class User {
 
 	@OneToMany(mappedBy = "user")
 	private List<JwtToken> jwtTokens;
+
+	@Override
+	public String toString() {
+		return "User{" +
+				"id=" + id +
+				", username='" + username + '\'' +
+				", password='" + password + '\'' +
+				", role=" + role +
+				'}';
+	}
 }

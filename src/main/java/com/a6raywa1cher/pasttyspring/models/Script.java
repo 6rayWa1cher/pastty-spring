@@ -44,4 +44,21 @@ public class Script {
 
 	@Column
 	private Long maxComputeTime;
+
+	@Override
+	public String toString() {
+		return "Script{" +
+				"id=" + id +
+				", name='" + name + '\'' +
+				", title='" + title + '\'' +
+				", description='" + description + '\'' +
+				", author=" + (author == null ? null : author.getUsername()) +
+				", pathToFile='" + pathToFile + '\'' +
+				", creationTime=" + creationTime +
+				", visible=" + visible +
+				", dialect='" + dialect + '\'' +
+				", type=" + type +
+				", maxComputeTime=" + maxComputeTime +
+				'}';
+	}
 }

@@ -3,10 +3,12 @@ package com.a6raywa1cher.pasttyspring.configs;
 import com.a6raywa1cher.pasttyspring.configs.security.SecurityTokenService;
 import com.a6raywa1cher.pasttyspring.configs.security.TokenOncePerRequestFilter;
 import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
+import com.a6raywa1cher.pasttyspring.rest.ControllerValidations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -15,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import javax.servlet.http.HttpServletResponse;
 
+@EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	private SecurityTokenService securityTokenService;
@@ -47,6 +50,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/v2/api-docs", "/webjars/**", "/swagger-resources", "/swagger-resources/**", "/swagger-ui.html").permitAll()
 //				.antMatchers("/ws/file_agent").authenticated()
 				.antMatchers("/script/**").permitAll()
+				.antMatchers(HttpMethod.GET, "/user/*").permitAll()
+				.antMatchers(HttpMethod.POST, "/script/s/{" + ControllerValidations.SCRIPT_NAME_REGEX + "}/exec").hasAuthority(RoleAsString.USER)
 				// allow all who are accessing "auth" and "user" service
 				.antMatchers(HttpMethod.POST, "/auth/login", "/user/reg").permitAll()
 				.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()

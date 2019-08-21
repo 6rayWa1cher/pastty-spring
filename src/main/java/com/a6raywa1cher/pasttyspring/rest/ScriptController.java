@@ -8,7 +8,6 @@ import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
-import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NoEnoughRightsForChangeException;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NonPublicScriptUploadedByAnonymousException;
@@ -28,7 +27,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -189,7 +188,7 @@ public class ScriptController {
 	}
 
 	@PostMapping("/s/{name}/change_type")
-	@Secured(RoleAsString.USER)
+	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
 	public ResponseEntity<ScriptMirror> changeType(@RequestBody @Valid ChangeTypeDTO dto,
 	                                               @PathVariable String name,
 	                                               Authentication authentication) {
@@ -199,6 +198,9 @@ public class ScriptController {
 		}
 		Script script = optionalScript.get();
 		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
+		if (!isModerator && (!script.getAuthor().equals((User) authentication.getPrincipal()) || !script.isVisible())) {
+			throw new NoEnoughRightsForChangeException();
+		}
 		if (!isModerator) {
 			Set<Pair<ScriptType, ScriptType>> permitted = new HashSet<>();
 			permitted.add(Pair.of(ScriptType.SCRIPT, ScriptType.REQUESTED_MODERATION));
@@ -215,15 +217,18 @@ public class ScriptController {
 	}
 
 	@PostMapping("/s/{name}/exec")
-	@Secured(RoleAsString.USER)
+	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
 	public CompletionStage<ResponseEntity<ExecutionScriptResponse>> exec(@RequestBody @Valid ExecuteScriptDTO dto,
-	                                                                     @PathVariable String name) {
+	                                                                     @PathVariable String name,
+	                                                                     Authentication authentication) {
 		Optional<Script> optionalScript = scriptService.findByName(name);
 		if (optionalScript.isEmpty()) {
-			return CompletableFuture.completedStage(ResponseEntity.notFound().build());
+			return CompletableFuture.completedFuture(ResponseEntity.notFound().build());
+//			return CompletableFuture.supplyAsync(() -> ResponseEntity.notFound().build(), new SimpleAsyncTaskExecutor());
 		}
 		Script script = optionalScript.get();
-		if (!script.getType().equals(ScriptType.EXEC_SCRIPT)) {
+		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
+		if (!script.getType().equals(ScriptType.EXEC_SCRIPT) && !isModerator) {
 			throw new NotExecScriptException();
 		}
 		CodeRunnerRequest request = new CodeRunnerRequest(script, dto.getStdin());

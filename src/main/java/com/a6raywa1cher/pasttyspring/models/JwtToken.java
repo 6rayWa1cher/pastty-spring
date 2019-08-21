@@ -24,4 +24,13 @@ public class JwtToken {
 
 	@Column
 	private LocalDateTime expDate;
+
+	@Override
+	public String toString() {
+		return "JwtToken{" +
+				"uuid='" + uuid + '\'' +
+				", user=" + (user == null ? null : user.getId()) +
+				", expDate=" + expDate +
+				'}';
+	}
 }
