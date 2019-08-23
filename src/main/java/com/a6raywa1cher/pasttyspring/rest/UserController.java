@@ -1,6 +1,8 @@
 package com.a6raywa1cher.pasttyspring.rest;
 
 import com.a6raywa1cher.pasttyspring.configs.security.HashingService;
+import com.a6raywa1cher.pasttyspring.configs.security.TokenUser;
+import com.a6raywa1cher.pasttyspring.dao.interfaces.RefreshJwtTokenService;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
@@ -25,11 +27,14 @@ import java.util.Optional;
 public class UserController {
 	private UserService userService;
 	private HashingService hashingService;
+	private RefreshJwtTokenService refreshJwtTokenService;
 
 	@Autowired
-	public UserController(UserService userService, HashingService hashingService) {
+	public UserController(UserService userService, HashingService hashingService,
+	                      RefreshJwtTokenService refreshJwtTokenService) {
 		this.userService = userService;
 		this.hashingService = hashingService;
+		this.refreshJwtTokenService = refreshJwtTokenService;
 	}
 
 	@PostMapping("/reg")
@@ -57,16 +62,17 @@ public class UserController {
 			return ResponseEntity.notFound().build();
 		}
 		User targetUser = optionalUser.get();
-		User requester = (User) authentication.getPrincipal();
+		TokenUser requester = (TokenUser) authentication.getPrincipal();
 		Role requesterRole = requester.getRole();
 		Role targetUserRole = targetUser.getRole();
 		Role dtoRole = dto.getRole();
-		if (!targetUser.equals(requester) && requesterRole != Role.ADMIN) {
+		if (!targetUser.getUsername().equals(requester.getUsername()) && requesterRole != Role.ADMIN) {
 			throw new NoEnoughRightsForChangeException();
-		} else if (targetUser.equals(requester) && !targetUserRole.getTree().contains(dtoRole)) {
+		} else if (targetUser.getUsername().equals(requester.getUsername()) && !targetUserRole.getTree().contains(dtoRole)) {
 			throw new NoEnoughRightsForChangeException();
 		}
 		targetUser.setRole(dtoRole);
+		refreshJwtTokenService.revokeAllByUser(targetUser);
 		return ResponseEntity.ok(UserMirror.convert(userService.save(targetUser)));
 	}
 

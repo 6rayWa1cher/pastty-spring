@@ -1,8 +1,8 @@
 package com.a6raywa1cher.pasttyspring.configs.security;
 
 import com.a6raywa1cher.pasttyspring.configs.AuthConfig;
-import com.a6raywa1cher.pasttyspring.dao.interfaces.JwtTokenService;
-import com.a6raywa1cher.pasttyspring.models.JwtToken;
+import com.a6raywa1cher.pasttyspring.dao.interfaces.RefreshJwtTokenService;
+import com.a6raywa1cher.pasttyspring.models.RefreshJwtToken;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -17,27 +17,32 @@ import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class JwtSecurityTokenServiceImpl implements JwtSecurityTokenService {
+	public static final String REFRESH_ID_CLAIM = "rid";
 
 	private final String appName;
 
-	private final JwtTokenService tokenService;
+	private final RefreshJwtTokenService tokenService;
 
 	private final Algorithm algorithm;
 
-	private final Duration expiration;
+	private final Duration accessTokenExpiration;
+
+	private final Duration refreshTokenExpiration;
 
 	private final JWTVerifier verifier;
 
 	@Autowired
-	public JwtSecurityTokenServiceImpl(JwtTokenService tokenService,
+	public JwtSecurityTokenServiceImpl(RefreshJwtTokenService tokenService,
 	                                   AuthConfig authConfig) {
-		this.expiration = authConfig.getSessionDuration();
+		this.accessTokenExpiration = authConfig.getAccessTokenDuration();
+		this.refreshTokenExpiration = authConfig.getRefreshTokenDuration();
 		this.algorithm = Algorithm.HMAC256(authConfig.getJwtSecretKey());
 		this.appName = "Pastty.io";
 		this.verifier = JWT.require(algorithm)
@@ -47,34 +52,7 @@ public class JwtSecurityTokenServiceImpl implements JwtSecurityTokenService {
 	}
 
 	@Override
-	public String getToken(User user) {
-		try {
-			Pair<JwtToken, String> jwtToken = createToken(user).orElseThrow();
-
-			return jwtToken.getSecond();
-		} catch (RuntimeException e) {
-			return null;
-		}
-	}
-
-	@Override
-	public Optional<User> checkToken(String token) {
-		try {
-			DecodedJWT jwtDecoded = verifier.verify(token);
-
-			String uuid = jwtDecoded.getId();
-			Optional<JwtToken> optionalJwtToken = tokenService.find(uuid);
-			if (optionalJwtToken.isEmpty()) {
-				return Optional.empty();
-			}
-			return Optional.of(optionalJwtToken.get().getUser());
-		} catch (JWTVerificationException | NullPointerException exception) {
-			return Optional.empty();
-		}
-	}
-
-	@Override
-	public Optional<JwtToken> getToken(String token) {
+	public Optional<RefreshJwtToken> getToken(String token) {
 		try {
 			DecodedJWT jwtDecoded = verifier.verify(token);
 
@@ -85,13 +63,16 @@ public class JwtSecurityTokenServiceImpl implements JwtSecurityTokenService {
 		}
 	}
 
+	@SuppressWarnings("DuplicatedCode")
 	@Override
-	public Optional<Pair<JwtToken, String>> createToken(User user) {
+	public Optional<String> createAccessToken(RefreshJwtToken refreshJwtToken) {
+		User user = refreshJwtToken.getUser();
+		String refreshTokenUUID = refreshJwtToken.getUuid();
 		try {
 			UUID uuid = UUID.randomUUID();
 
 			LocalDateTime now = LocalDateTime.now();
-			LocalDateTime exp = now.plus(expiration);
+			LocalDateTime exp = now.plus(accessTokenExpiration);
 
 			Date issuedDate = new Date();
 			issuedDate.setTime(Timestamp.valueOf(now.minusSeconds(1)).getTime());
@@ -99,16 +80,65 @@ public class JwtSecurityTokenServiceImpl implements JwtSecurityTokenService {
 			Date expDate = new Date();
 			expDate.setTime(Timestamp.valueOf(exp).getTime());
 
+			TokenUser tokenUser = TokenUser.convert(user);
+
 			String token = JWT.create()
 					.withIssuer(appName)
-					.withClaim("username", user.getUsername())
 					.withIssuedAt(issuedDate)
 					.withNotBefore(issuedDate)
 					.withExpiresAt(expDate)
+					.withSubject(tokenUser.toJson())
+					.withClaim(REFRESH_ID_CLAIM, refreshTokenUUID)
 					.withJWTId(uuid.toString())
 					.sign(algorithm);
-			return Optional.of(Pair.of(tokenService.save(new JwtToken(uuid.toString(), user, exp)), token));
+			return Optional.of(token);
 		} catch (JWTCreationException e) {
+			return Optional.empty();
+		}
+	}
+
+	@SuppressWarnings("DuplicatedCode")
+	@Override
+	public Optional<Pair<RefreshJwtToken, String>> createRefreshToken(User user) {
+		try {
+			UUID uuid = UUID.randomUUID();
+
+			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime exp = now.plus(refreshTokenExpiration);
+
+			Date issuedDate = new Date();
+			issuedDate.setTime(Timestamp.valueOf(now.minusSeconds(1)).getTime());
+
+			Date expDate = new Date();
+			expDate.setTime(Timestamp.valueOf(exp).getTime());
+
+			TokenUser tokenUser = TokenUser.convert(user);
+
+			String token = JWT.create()
+					.withIssuer(appName)
+					.withIssuedAt(issuedDate)
+					.withNotBefore(issuedDate)
+					.withExpiresAt(expDate)
+					.withSubject(tokenUser.toJson())
+					.withJWTId(uuid.toString())
+					.sign(algorithm);
+			return Optional.of(Pair.of(tokenService.save(new RefreshJwtToken(uuid.toString(), user, exp)), token));
+		} catch (JWTCreationException e) {
+			return Optional.empty();
+		}
+	}
+
+	@Override
+	public Optional<TokenAuthentication> toAuthentication(String accessToken) {
+		try {
+			DecodedJWT jwtDecoded = verifier.verify(accessToken);
+			TokenUser tokenUser = TokenUser.fromJson(jwtDecoded.getSubject());
+			String refreshTokenUUID = jwtDecoded.getClaim(REFRESH_ID_CLAIM).asString();
+			LocalDateTime exp = jwtDecoded.getExpiresAt().toInstant()
+					.atZone(ZoneId.systemDefault())
+					.toLocalDateTime();
+			return Optional.of(new TokenAuthentication(accessToken, tokenUser, refreshTokenUUID, exp));
+		} catch (JWTVerificationException jwt) {
 			return Optional.empty();
 		}
 	}
@@ -116,7 +146,7 @@ public class JwtSecurityTokenServiceImpl implements JwtSecurityTokenService {
 	@Override
 	public Optional<String> getJti(String token) {
 		try {
-			DecodedJWT jwtDecoded = JWT.decode(token);
+			DecodedJWT jwtDecoded = verifier.verify(token);
 
 			return Optional.of(jwtDecoded.getId());
 		} catch (JWTVerificationException | NullPointerException exception) {

@@ -1,9 +1,10 @@
 package com.a6raywa1cher.pasttyspring.configs.security;
 
-import com.a6raywa1cher.pasttyspring.models.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -16,10 +17,12 @@ import java.util.Optional;
 
 public class TokenOncePerRequestFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(TokenOncePerRequestFilter.class);
-	private final SecurityTokenService securityTokenService;
+	private final JwtSecurityTokenService securityTokenService;
+	private final AuthenticationProvider provider;
 
-	public TokenOncePerRequestFilter(SecurityTokenService securityTokenService) {
+	public TokenOncePerRequestFilter(JwtSecurityTokenService securityTokenService, AuthenticationProvider provider) {
 		this.securityTokenService = securityTokenService;
+		this.provider = provider;
 	}
 
 	@Override
@@ -43,16 +46,19 @@ public class TokenOncePerRequestFilter extends OncePerRequestFilter {
 			header = header.replace("Bearer ", "").strip();
 		}
 
-		Optional<User> user = securityTokenService.checkToken(header);
+		Optional<TokenAuthentication> tokenAuthentication = securityTokenService.toAuthentication(header);
 
-		if (user.isEmpty()) {
+		if (tokenAuthentication.isEmpty()) {
 			filterChain.doFilter(request, response);        // If not valid, go to the next filter.
 			return;
 		}
-
-		TokenAuthentication tokenAuthentication = new TokenAuthentication(header, user.get());
-//		tokenAuthentication.setAuthenticated(true);
-		SecurityContextHolder.getContext().setAuthentication(tokenAuthentication);
-		filterChain.doFilter(request, response);
+		try {
+			provider.authenticate(tokenAuthentication.get());
+			SecurityContextHolder.getContext().setAuthentication(tokenAuthentication.get());
+			filterChain.doFilter(request, response);
+		} catch (AuthenticationException ae) {
+			SecurityContextHolder.clearContext();
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+		}
 	}
 }

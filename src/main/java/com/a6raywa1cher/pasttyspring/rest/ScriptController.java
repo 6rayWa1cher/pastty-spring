@@ -3,6 +3,7 @@ package com.a6raywa1cher.pasttyspring.rest;
 import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
 import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunnerRequest;
 import com.a6raywa1cher.pasttyspring.configs.AppConfig;
+import com.a6raywa1cher.pasttyspring.configs.security.TokenUser;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.Script;
@@ -84,7 +85,7 @@ public class ScriptController {
 		}
 		Script script = new Script();
 		if (!isAnonymous) {
-			script.setAuthor((User) authentication.getPrincipal());
+			script.setAuthor(userService.findFromAuthentication(authentication).orElseThrow());
 		}
 		script.setCreationTime(LocalDateTime.now());
 		script.setName(dto.getName());
@@ -130,10 +131,11 @@ public class ScriptController {
 					Pageable pageable, Authentication authentication) {
 		Pageable filtered = filterPageable(pageable);
 		Page<ScriptMirror> page;
-		if (authentication == null) {
+		Optional<User> user = userService.findFromAuthentication(authentication);
+		if (user.isEmpty()) {
 			page = scriptService.getList(filtered).map(ScriptMirror::convert);
 		} else {
-			page = scriptService.findAllByVisibleTrueOrAuthor((User) authentication.getPrincipal(), filtered)
+			page = scriptService.findAllByVisibleTrueOrAuthor(user.get(), filtered)
 					.map(ScriptMirror::convert);
 		}
 		return ResponseEntity.ok(page.getContent());
@@ -146,9 +148,10 @@ public class ScriptController {
 					Pageable pageable, @PathVariable String username, Authentication authentication
 	) {
 		Pageable filtered = filterPageable(pageable);
-		if (authentication != null && ((User) authentication.getPrincipal()).getUsername().equals(username)) {
+		TokenUser tokenUser = authentication != null ? (TokenUser) authentication.getPrincipal() : null;
+		if (tokenUser != null && tokenUser.getUsername().equals(username)) {
 			return ResponseEntity.ok(
-					scriptService.findAllByAuthor((User) authentication.getPrincipal(), filtered)
+					scriptService.findAllByAuthor(userService.findFromTokenUser(tokenUser), filtered)
 							.map(ScriptMirror::convert).getContent()
 			);
 		} else {
@@ -174,7 +177,7 @@ public class ScriptController {
 		}
 		Script script = optionalScript.get();
 		if (!script.isVisible() && (authentication == null ||
-				!((User) authentication.getPrincipal()).getId().equals(script.getAuthor().getId()))) {
+				!(userService.findFromTokenUser((TokenUser) authentication.getPrincipal())).getId().equals(script.getAuthor().getId()))) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
 		ScriptMirror scriptMirror = ScriptMirror.convert(script);
@@ -198,7 +201,7 @@ public class ScriptController {
 		}
 		Script script = optionalScript.get();
 		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
-		if (!isModerator && (!script.getAuthor().equals((User) authentication.getPrincipal()) || !script.isVisible())) {
+		if (!isModerator && (!script.getAuthor().equals(userService.findFromTokenUser((TokenUser) authentication.getPrincipal())) || !script.isVisible())) {
 			throw new NoEnoughRightsForChangeException();
 		}
 		if (!isModerator) {

@@ -9,7 +9,7 @@ import java.util.List;
 
 @Entity
 @Data
-@EqualsAndHashCode(exclude = {"scripts", "jwtTokens"})
+@EqualsAndHashCode(exclude = {"scripts", "refreshJwtTokens"})
 public class User {
 	@Id
 	@GeneratedValue
@@ -29,7 +29,7 @@ public class User {
 	private List<Script> scripts;
 
 	@OneToMany(mappedBy = "user")
-	private List<JwtToken> jwtTokens;
+	private List<RefreshJwtToken> refreshJwtTokens;
 
 	@Override
 	public String toString() {

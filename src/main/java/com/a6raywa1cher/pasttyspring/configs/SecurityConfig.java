@@ -1,6 +1,6 @@
 package com.a6raywa1cher.pasttyspring.configs;
 
-import com.a6raywa1cher.pasttyspring.configs.security.SecurityTokenService;
+import com.a6raywa1cher.pasttyspring.configs.security.JwtSecurityTokenService;
 import com.a6raywa1cher.pasttyspring.configs.security.TokenOncePerRequestFilter;
 import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.rest.ControllerValidations;
@@ -20,11 +20,11 @@ import javax.servlet.http.HttpServletResponse;
 @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-	private SecurityTokenService securityTokenService;
+	private JwtSecurityTokenService securityTokenService;
 	private AuthenticationProvider provider;
 
 	@Autowired
-	public SecurityConfig(SecurityTokenService tokenService, AuthenticationProvider provider) {
+	public SecurityConfig(JwtSecurityTokenService tokenService, AuthenticationProvider provider) {
 		this.securityTokenService = tokenService;
 		this.provider = provider;
 	}
@@ -43,7 +43,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.exceptionHandling().authenticationEntryPoint((req, rsp, e) -> rsp.sendError(HttpServletResponse.SC_UNAUTHORIZED))
 				.and()
 				// Add a filter to validate the tokens with every request
-				.addFilterAfter(new TokenOncePerRequestFilter(securityTokenService), UsernamePasswordAuthenticationFilter.class)
+				.addFilterAfter(new TokenOncePerRequestFilter(securityTokenService, provider), UsernamePasswordAuthenticationFilter.class)
 				// authorization requests config
 				.authorizeRequests()
 				.antMatchers(HttpMethod.GET, "/actuator/**").hasAnyAuthority(RoleAsString.ADMIN)
@@ -53,7 +53,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers(HttpMethod.GET, "/user/*").permitAll()
 				.antMatchers(HttpMethod.POST, "/script/s/{" + ControllerValidations.SCRIPT_NAME_REGEX + "}/exec").hasAuthority(RoleAsString.USER)
 				// allow all who are accessing "auth" and "user" service
-				.antMatchers(HttpMethod.POST, "/auth/login", "/user/reg").permitAll()
+				.antMatchers(HttpMethod.POST, "/auth/login", "/auth/get_access", "/user/reg").permitAll()
 				.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.anyRequest().authenticated();
 	}

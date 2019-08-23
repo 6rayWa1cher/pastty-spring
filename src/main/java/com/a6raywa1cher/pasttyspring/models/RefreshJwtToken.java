@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class JwtToken {
+public class RefreshJwtToken {
 	@Id
 	@Column(length = 36)
 	private String uuid;

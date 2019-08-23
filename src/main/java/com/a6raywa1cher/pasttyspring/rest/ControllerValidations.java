@@ -5,6 +5,9 @@ public final class ControllerValidations {
 
 	public static final String SCRIPT_NAME_REGEX = "[a-z0-9_-]{3,25}";
 
+	// https://www.regexpal.com/105777
+	public static final String JWT_REGEX = "^[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*$";
+
 	public static final int PASSWORD_LENGTH = 255;
 
 	public static final int SCRIPT_NAME_LENGTH = 35;

@@ -1,5 +1,6 @@
 package com.a6raywa1cher.pasttyspring.configs;
 
+import com.a6raywa1cher.pasttyspring.configs.validators.annotation.FieldDurationBigger;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +14,7 @@ import java.time.Duration;
 @Configuration
 @ConfigurationProperties(prefix = "app.auth")
 @Validated
+@FieldDurationBigger(field = "accessTokenDuration", biggerField = "refreshTokenDuration")
 public class AuthConfig {
 	/**
 	 * JWT secret key.
@@ -21,8 +23,14 @@ public class AuthConfig {
 	private String jwtSecretKey;
 
 	/**
-	 * Duration of a new session.
+	 * Duration of access token (should be small).
 	 */
 	@NotNull
-	private Duration sessionDuration;
+	private Duration accessTokenDuration;
+
+	/**
+	 * Duration of refresh token (should be bigger than accessToken).
+	 */
+	@NotNull
+	private Duration refreshTokenDuration;
 }

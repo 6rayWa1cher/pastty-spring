@@ -1,8 +1,5 @@
 package com.a6raywa1cher.pasttyspring.configs.security;
 
-import com.a6raywa1cher.pasttyspring.dao.converters.UserToJwtTokenConverter;
-import com.a6raywa1cher.pasttyspring.models.JwtToken;
-import com.a6raywa1cher.pasttyspring.models.User;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.security.core.Authentication;
@@ -16,21 +13,21 @@ import java.util.Collection;
 public class TokenAuthentication implements Authentication {
 	private boolean isAuthenticated;
 	private String token;
-	private JwtToken jwt;
+	private String refreshTokenUUID;
+	private TokenUser user;
+	private LocalDateTime exp;
 
-	public TokenAuthentication(String token, User user) {
-		this(token, UserToJwtTokenConverter.apply(token, user));
-	}
-
-	public TokenAuthentication(String token, JwtToken jwtSessionToken) {
+	public TokenAuthentication(String token, TokenUser user, String refreshTokenUUID, LocalDateTime exp) {
 		this.token = token;
-		this.jwt = jwtSessionToken;
-		this.isAuthenticated = jwtSessionToken.getExpDate().isAfter(LocalDateTime.now());
+		this.user = user;
+		this.refreshTokenUUID = refreshTokenUUID;
+		this.exp = exp;
+		this.isAuthenticated = exp.isAfter(LocalDateTime.now());
 	}
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return jwt.getUser().getRole().getTree();
+		return user.getRole().getTree();
 	}
 
 	@Override
@@ -40,17 +37,17 @@ public class TokenAuthentication implements Authentication {
 
 	@Override
 	public Object getDetails() {
-		return jwt.getUser();
+		return user;
 	}
 
 	@Override
-	public User getPrincipal() {
-		return jwt.getUser();
+	public TokenUser getPrincipal() {
+		return user;
 	}
 
 	@Override
 	public boolean isAuthenticated() {
-		if (isAuthenticated && jwt != null && jwt.getExpDate().isAfter(LocalDateTime.now())) {
+		if (isAuthenticated && exp != null && exp.isAfter(LocalDateTime.now())) {
 			return true;
 		} else if (isAuthenticated) {
 			isAuthenticated = false;
@@ -68,6 +65,6 @@ public class TokenAuthentication implements Authentication {
 
 	@Override
 	public String getName() {
-		return jwt.getUser().getUsername();
+		return user.getUsername();
 	}
 }
