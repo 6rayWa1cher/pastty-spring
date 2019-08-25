@@ -10,14 +10,9 @@ import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
-import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NoEnoughRightsForChangeException;
-import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NonPublicScriptUploadedByAnonymousException;
-import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.NotExecScriptException;
-import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.ScriptWithProvidedNameExistsException;
+import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.*;
 import com.a6raywa1cher.pasttyspring.rest.dto.mirror.ScriptMirror;
-import com.a6raywa1cher.pasttyspring.rest.dto.request.ChangeTypeDTO;
-import com.a6raywa1cher.pasttyspring.rest.dto.request.ExecuteScriptDTO;
-import com.a6raywa1cher.pasttyspring.rest.dto.request.UploadScriptDTO;
+import com.a6raywa1cher.pasttyspring.rest.dto.request.*;
 import com.a6raywa1cher.pasttyspring.rest.dto.response.ExecutionScriptResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -66,7 +61,7 @@ public class ScriptController {
 	}
 
 	public static String generateRandomName() {
-		String characters = "abcdefghijklmnopqrstuvwxyz0123456789_-";
+		final String characters = "abcdefghijklmnopqrstuvwxyz0123456789_-";
 		Random random = new Random();
 		char[] text = new char[6 + random.nextInt(24 - 6)];
 		for (int i = 0; i < text.length; i++) {
@@ -248,5 +243,110 @@ public class ScriptController {
 					scriptResponse.setStdout(throwable.getMessage());
 					return ResponseEntity.ok(scriptResponse);
 				});
+	}
+
+	@SuppressWarnings("DuplicatedCode")
+	@Transactional(rollbackOn = IOException.class)
+	@PatchMapping("/s/{name}")
+	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	public ResponseEntity<ScriptMirror> patch(@RequestBody @Valid PatchScriptDTO dto,
+	                                          @PathVariable @Pattern(regexp = ControllerValidations.SCRIPT_NAME_REGEX)
+	                                          @Valid String name, Authentication authentication)
+			throws IOException {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
+		Script script = optionalScript.get();
+		Optional<User> requester = userService.findFromAuthentication(authentication);
+		if (requester.isEmpty() || script.getAuthor() == null || !requester.get().equals(script.getAuthor())) {
+			throw new EditingNotYourScriptException();
+		}
+		if (dto.getName() != null && !script.getName().equals(dto.getName())) {
+			Optional<Script> check = scriptService.findByName(dto.getName());
+			if (check.isPresent()) {
+				throw new ScriptWithProvidedNameExistsException();
+			}
+		}
+		dto.patch(script);
+		Script patched = scriptService.save(script);
+		ScriptMirror response = ScriptMirror.convert(patched);
+		Path path = Path.of(appConfig.getScriptsFolder(), patched.getPathToFile());
+		if (dto.getCode() != null) {
+			try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(path.toFile()))) {
+				writer.append(dto.getCode());
+			}
+			response.setCode(dto.getCode());
+		} else {
+			try (FileInputStream stream = new FileInputStream(path.toFile())) {
+				String code = new String(stream.readAllBytes());
+				response.setCode(code);
+			}
+		}
+		return ResponseEntity.ok(response);
+	}
+
+	@SuppressWarnings("DuplicatedCode")
+	@Transactional(rollbackOn = IOException.class)
+	@PutMapping("/s/{name}")
+	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	public ResponseEntity<ScriptMirror> put(@RequestBody @Valid PutScriptDTO dto,
+	                                        @PathVariable @Pattern(regexp = ControllerValidations.SCRIPT_NAME_REGEX)
+	                                        @Valid String name, Authentication authentication)
+			throws IOException {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
+		Script script = optionalScript.get();
+		Optional<User> requester = userService.findFromAuthentication(authentication);
+		if (requester.isEmpty() || script.getAuthor() == null || !requester.get().equals(script.getAuthor())) {
+			throw new EditingNotYourScriptException();
+		}
+		if (!script.getName().equals(dto.getName())) {
+			Optional<Script> check = scriptService.findByName(dto.getName());
+			if (check.isPresent()) {
+				throw new ScriptWithProvidedNameExistsException();
+			}
+		}
+		dto.put(script);
+		Script patched = scriptService.save(script);
+		ScriptMirror response = ScriptMirror.convert(patched);
+		Path path = Path.of(appConfig.getScriptsFolder(), patched.getPathToFile());
+		try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(path.toFile()))) {
+			writer.append(dto.getCode());
+		}
+		response.setCode(dto.getCode());
+		return ResponseEntity.ok(response);
+	}
+
+	@Transactional(rollbackOn = IOException.class)
+	@DeleteMapping("/s/{name}")
+	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	public ResponseEntity<?> delete(@PathVariable String name, Authentication authentication)
+			throws IOException {
+		Optional<Script> optionalScript = scriptService.findByName(name);
+		if (optionalScript.isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
+		Script script = optionalScript.get();
+		User user = userService.findFromAuthentication(authentication).orElseThrow();
+		if (script.getAuthor() == null) {
+			if (!user.getRole().getTree().contains(Role.MODERATOR)) {
+				throw new NoEnoughRightsForChangeException();
+			}
+		} else if (!script.isVisible()) {
+			if (!user.getRole().getTree().contains(Role.ADMIN)) {
+				throw new NoEnoughRightsForChangeException();
+			}
+		} else {
+			if (!script.getAuthor().equals(user) && !user.getRole().getTree().contains(Role.MODERATOR)) {
+				throw new NoEnoughRightsForChangeException();
+			}
+		}
+		scriptService.delete(script);
+		Path path = Path.of(appConfig.getScriptsFolder(), script.getPathToFile());
+		Files.delete(path);
+		return ResponseEntity.ok().build();
 	}
 }

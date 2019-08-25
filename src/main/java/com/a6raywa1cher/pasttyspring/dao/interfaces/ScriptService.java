@@ -21,4 +21,6 @@ public interface ScriptService {
 	Page<Script> findAllByVisibleTrueOrAuthor(User user, Pageable pageable);
 
 	Script save(Script script);
+
+	void delete(Script script);
 }

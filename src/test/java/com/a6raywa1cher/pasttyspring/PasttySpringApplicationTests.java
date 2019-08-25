@@ -1,7 +1,9 @@
 package com.a6raywa1cher.pasttyspring;
 
-import com.a6raywa1cher.pasttyspring.components.coderunner.CodeRunner;
+import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.configs.MainTestConfig;
+import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
+import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import com.a6raywa1cher.pasttyspring.rest.dto.response.ExecutionScriptResponse;
 import com.a6raywa1cher.pasttyspring.utils.AuthoritiesKeychain;
@@ -36,11 +38,11 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import static com.a6raywa1cher.pasttyspring.utils.TestUtils.registerUser;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -61,10 +63,13 @@ public class PasttySpringApplicationTests {
 	private WebApplicationContext wac;
 
 	@Autowired
-	private CodeRunner codeRunner;
+	private AuthoritiesKeychain keychain;
 
 	@Autowired
-	private AuthoritiesKeychain keychain;
+	private ScriptService scriptService;
+
+	@Autowired
+	private AppConfig appConfig;
 
 	private MockMvc mockMvc;
 
@@ -77,12 +82,6 @@ public class PasttySpringApplicationTests {
 				.apply(springSecurity())
 				.build();
 		objectMapper = new ObjectMapper();
-//		Executor executor = Executors.newSingleThreadExecutor();
-//		Mockito.when(codeRunner.execTask(Mockito.any())).then(
-//				(Answer<CompletableFuture<CodeRunnerResponse>>) invocation ->
-//						CompletableFuture.supplyAsync(
-//								() -> new CodeRunnerResponse(invocation.getArgument(0), 0, "mock")
-//								, executor));
 		keychain.check(mockMvc);
 	}
 
@@ -250,9 +249,13 @@ public class PasttySpringApplicationTests {
 		String stdin = "echo, echo, echo";
 		ThrowsConsumer<ResultActions> checkStdout = act -> {
 			act.andExpect(status().is2xxSuccessful());
+			// exec() returns CompletionStage of ExecutionScriptResponse (not JSON!), which requires special treatment
+			// in case of MockMvc
 			Assert.assertEquals(stdin,
-					((ExecutionScriptResponse) ((ResponseEntity) act.andReturn().getAsyncResult()).getBody()).getStdout());
+					((ExecutionScriptResponse) ((ResponseEntity) act.andReturn().getAsyncResult()).getBody())
+							.getStdout());
 		};
+		// Only moderator and admin can exec unauthorized script
 		TestUtils.assertSecurity(token ->
 						this.mockMvc.perform(post("/script/s/" + uploadName + "/exec")
 								.header("jwt", token)
@@ -261,7 +264,6 @@ public class PasttySpringApplicationTests {
 										.toString())
 								.contentType(MediaType.APPLICATION_JSON_UTF8))
 								.andDo(print()),
-//										.andExpect(request().asyncStarted()
 				uploaderToken, keychain,
 				selfAct -> selfAct.andExpect(status().isBadRequest()),
 				checkStdout,
@@ -276,7 +278,7 @@ public class PasttySpringApplicationTests {
 						.toString())
 				.contentType(MediaType.APPLICATION_JSON_UTF8))
 				.andDo(print())
-				.andExpect(status().isForbidden());
+				.andExpect(status().isForbidden()); // random people can't change type
 
 		this.mockMvc.perform(post("/script/s/" + uploadName + "/change_type")
 				.header("jwt", uploaderToken)
@@ -295,7 +297,7 @@ public class PasttySpringApplicationTests {
 						.toString())
 				.contentType(MediaType.APPLICATION_JSON_UTF8))
 				.andDo(print())
-				.andExpect(status().isForbidden());
+				.andExpect(status().isForbidden()); // uploader can change type only on few directions (see changeType())
 
 		this.mockMvc.perform(post("/script/s/" + uploadName + "/change_type")
 				.header("jwt", keychain.getModeratorToken())
@@ -318,8 +320,264 @@ public class PasttySpringApplicationTests {
 				checkStdout,
 				checkStdout,
 				checkStdout,
-				anonymousAct -> anonymousAct.andExpect(status().isUnauthorized())
+				anonymousAct -> anonymousAct.andExpect(status().isUnauthorized()) // anonymous can't exec scripts anyway
 		);
+	}
+
+	@Test
+	public void uploadAndPatchAnonymousScript() throws Exception {
+		String uploadName = "whatis42";
+		String code = "Answer to the Ultimate Question of Life, the Universe, and Everything";
+		String dialect = "deepthoughtlang";
+		this.mockMvc.perform(post("/script/upload")
+				.content(objectMapper.createObjectNode()
+						.put("code", code)
+						.put("dialect", dialect)
+						.put("name", uploadName)
+						.put("visible", true)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName))
+				.andExpect(jsonPath("$.dialect").value(dialect));
+		this.mockMvc.perform(patch("/script/s/" + uploadName)
+				.content(objectMapper.createObjectNode()
+						.put("dialect", "random")
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is4xxClientError()); // after uploading, anonymous can't change anything
+	}
+
+	@Test
+	public void patchScript() throws Exception {
+		String uploaderUsername = "patchScript1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "nyancat";
+		String code = "Nya nya nya nya nya nya nya!";
+		String dialect = "nyancatlang";
+		String title = "Title.";
+		this.mockMvc.perform(post("/script/upload")
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code)
+						.put("dialect", dialect)
+						.put("name", uploadName)
+						.put("title", title)
+						.put("visible", true)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName))
+				.andExpect(jsonPath("$.dialect").value(dialect));
+		String newCode = "meow";
+		String newDialect = "cat";
+		String newName = "name";
+		String newDescription = "meow meow meow!";
+		TestUtils.assertSecurity(token -> this.mockMvc.perform(patch("/script/s/" + uploadName)
+						.header("jwt", token)
+						.content(objectMapper.createObjectNode()
+								.put("code", newCode)
+								.put("dialect", newDialect)
+								.put("name", newName)
+								.put("description", newDescription)
+								.toString())
+						.contentType(MediaType.APPLICATION_JSON_UTF8))
+						.andDo(print()),
+				uploaderToken, keychain,
+				selfAct -> selfAct.andExpect(status().is2xxSuccessful())
+						.andExpect(jsonPath("$.code").value(newCode))
+						.andExpect(jsonPath("$.dialect").value(newDialect))
+						.andExpect(jsonPath("$.name").value(newName))
+						.andExpect(jsonPath("$.description").value(newDescription))
+						.andExpect(jsonPath("$.title").value(title)),
+				moderatorAct -> moderatorAct.andExpect(status().is4xxClientError()), // only uploader can change script
+				otherAct -> otherAct.andExpect(status().is4xxClientError()),
+				anonymousAct -> anonymousAct.andExpect(status().is4xxClientError()));
+		this.mockMvc.perform(patch("/script/s/" + newName)
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("name", "@@#!@$!@@$")
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().isBadRequest()); // just validation check
+		this.mockMvc.perform(get("/script/s/" + newName))
+				.andDo(print())
+				.andExpect(jsonPath("$.code").value(newCode))
+				.andExpect(jsonPath("$.dialect").value(newDialect))
+				.andExpect(jsonPath("$.name").value(newName))
+				.andExpect(jsonPath("$.description").value(newDescription))
+				.andExpect(jsonPath("$.title").value(title))
+				.andExpect(jsonPath("$.visible").value(true));
+	}
+
+	@Test
+	public void putScript() throws Exception {
+		String uploaderUsername = "putScript1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "ogwin";
+		String code = "The International winners x2";
+		String dialect = "esportslang";
+		String title = "Title.";
+		this.mockMvc.perform(post("/script/upload")
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code)
+						.put("dialect", dialect)
+						.put("name", uploadName)
+						.put("title", title)
+						.put("visible", true)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName))
+				.andExpect(jsonPath("$.dialect").value(dialect));
+		String newCode = "2nd place in Six Invitational 2019";
+		String newDialect = "esportslang";
+		String newName = "te2nd";
+		String newDescription = "2nd is good too!";
+		this.mockMvc.perform(put("/script/s/" + uploadName)
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("dialect", newDialect)
+						.put("name", newName)
+						.put("description", newDescription)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().isBadRequest()); // "code" and "visible" isn't presented (put operation)
+		TestUtils.assertSecurity(token -> this.mockMvc.perform(put("/script/s/" + uploadName)
+						.header("jwt", token)
+						.content(objectMapper.createObjectNode()
+								.put("code", newCode)
+								.put("dialect", newDialect)
+								.put("name", newName)
+								.put("description", newDescription)
+								.put("visible", true)
+								.toString())
+						.contentType(MediaType.APPLICATION_JSON_UTF8))
+						.andDo(print()),
+				uploaderToken, keychain,
+				selfAct -> selfAct.andExpect(status().is2xxSuccessful())
+						.andExpect(jsonPath("$.code").value(newCode))
+						.andExpect(jsonPath("$.dialect").value(newDialect))
+						.andExpect(jsonPath("$.name").value(newName))
+						.andExpect(jsonPath("$.description").value(newDescription))
+						.andExpect(jsonPath("$.title").isEmpty()),
+				moderatorAct -> moderatorAct.andExpect(status().is4xxClientError()),
+				otherAct -> otherAct.andExpect(status().is4xxClientError()),
+				anonymousAct -> anonymousAct.andExpect(status().is4xxClientError()));
+		this.mockMvc.perform(get("/script/s/" + newName))
+				.andDo(print())
+				.andExpect(jsonPath("$.code").value(newCode))
+				.andExpect(jsonPath("$.dialect").value(newDialect))
+				.andExpect(jsonPath("$.name").value(newName))
+				.andExpect(jsonPath("$.description").value(newDescription))
+				.andExpect(jsonPath("$.title").isEmpty())
+				.andExpect(jsonPath("$.visible").value(true));
+	}
+
+	@Test
+	public void patchPostToExistingName() throws Exception {
+		String uploaderUsername = "patchPostToEN1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName1 = "queensong";
+		String code1 = "Don't stop me now!";
+		String dialect1 = "queenlang";
+		this.mockMvc.perform(post("/script/upload")
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code1)
+						.put("dialect", dialect1)
+						.put("name", uploadName1)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName1))
+				.andExpect(jsonPath("$.dialect").value(dialect1));
+
+		String uploadName2 = "queensong2";
+		String code2 = "Anybody find me somebody to love...";
+		String dialect2 = "queenlang";
+		this.mockMvc.perform(post("/script/upload")
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code2)
+						.put("dialect", dialect2)
+						.put("name", uploadName2)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName2))
+				.andExpect(jsonPath("$.dialect").value(dialect2));
+
+		this.mockMvc.perform(patch("/script/s/" + uploadName2)
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("name", uploadName1)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> Assert.assertEquals("Name is already taken",
+						result.getResponse().getErrorMessage()));
+
+		this.mockMvc.perform(put("/script/s/" + uploadName2)
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code2)
+						.put("dialect", dialect2)
+						.put("name", uploadName1)
+						.put("visible", true)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> Assert.assertEquals("Name is already taken",
+						result.getResponse().getErrorMessage()));
+	}
+
+	@Test
+	public void deleteScript() throws Exception {
+		String uploaderUsername = "deleteScript1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "some_script";
+		String code = "some_code";
+		String dialect = "some_lang";
+		this.mockMvc.perform(post("/script/upload")
+				.header("jwt", uploaderToken)
+				.content(objectMapper.createObjectNode()
+						.put("code", code)
+						.put("dialect", dialect)
+						.put("name", uploadName)
+						.put("visible", true)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.name").value(uploadName))
+				.andExpect(jsonPath("$.dialect").value(dialect));
+		Script script = scriptService.findByName(uploadName).orElseThrow();
+		Path path = Path.of(appConfig.getScriptsFolder(), script.getPathToFile());
+		Assert.assertTrue(path.toFile().exists());
+		this.mockMvc.perform(delete("/script/s/" + uploadName))
+				.andDo(print())
+				.andExpect(status().isUnauthorized());
+		this.mockMvc.perform(delete("/script/s/" + uploadName)
+				.header("jwt", keychain.getOtherToken()))
+				.andDo(print())
+				.andExpect(status().isForbidden());
+		this.mockMvc.perform(delete("/script/s/" + uploadName)
+				.header("jwt", uploaderToken))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful());
+		Assert.assertFalse(path.toFile().exists());
 	}
 
 	@After

@@ -20,7 +20,7 @@ public class ScriptMirror {
 
 	private LocalDateTime creationTime;
 
-	private boolean visible;
+	private Boolean visible;
 
 	private String code;
 

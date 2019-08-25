@@ -53,4 +53,9 @@ public class ScriptServiceImpl implements ScriptService {
 	public Script save(Script script) {
 		return repository.save(script);
 	}
+
+	@Override
+	public void delete(Script script) {
+		repository.delete(script);
+	}
 }
