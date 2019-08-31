@@ -3,7 +3,7 @@ spring.profiles.active: dev
 app:
   auth:
     jwt-secret-key: vIy3Wg073BAzHR4aWdhJQt8HYrLCqXsGLf8r7NcimRJYHDY4NqyCXoWsNFJCnn3
-    access-token-duration: P1D
+    access-token-duration: PT5M
     refresh-token-duration: P90D
   scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
   exec-script:

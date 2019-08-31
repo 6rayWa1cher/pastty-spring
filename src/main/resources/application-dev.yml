@@ -1,4 +1,6 @@
 app:
+  auth:
+    access-token-duration: P1D
   scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
   exec-script:
     environments:
