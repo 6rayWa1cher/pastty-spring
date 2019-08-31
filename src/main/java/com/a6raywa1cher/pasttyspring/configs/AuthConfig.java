@@ -14,7 +14,8 @@ import java.time.Duration;
 @Configuration
 @ConfigurationProperties(prefix = "app.auth")
 @Validated
-@FieldDurationBigger(field = "accessTokenDuration", biggerField = "refreshTokenDuration")
+@FieldDurationBigger(field = "accessTokenDuration", biggerField = "refreshTokenDuration",
+		message = "Access token must be smaller than refresh")
 public class AuthConfig {
 	/**
 	 * JWT secret key.

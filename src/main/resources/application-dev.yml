@@ -1,0 +1,13 @@
+app:
+  scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
+  exec-script:
+    environments:
+      - name: python
+        exec: "python {1}"
+        sourceFilename: "{1}.py"
+      - name: java12
+        exec: "java {1}"
+        sourceFilename: "{1}.java"
+spring.datasource.url: jdbc:postgresql://localhost:5432/pastty-core2
+spring.datasource.username: postgres
+spring.datasource.password: Ofss57ArFFNAZfNL9cWO

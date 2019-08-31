@@ -29,12 +29,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
-		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
 		"app.scripts-folder=testsScriptsFolder",
 		"app.auth.access-token-duration=PT2S",
 		"app.auth.refresh-token-duration=PT4S"
 }, classes = MainTestConfig.class)
-//@PropertySource("AuthControllerTests-context.yml")
 @AutoConfigureCache
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase

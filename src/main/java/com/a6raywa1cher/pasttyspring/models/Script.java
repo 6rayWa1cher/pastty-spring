@@ -6,6 +6,7 @@ import lombok.Data;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -44,6 +45,9 @@ public class Script {
 
 	@Column
 	private Long maxComputeTime;
+
+	@OneToMany(mappedBy = "script", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<Comment> commentList;
 
 	@Override
 	public String toString() {

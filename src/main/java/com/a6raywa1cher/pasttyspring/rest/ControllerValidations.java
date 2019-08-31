@@ -14,7 +14,9 @@ public final class ControllerValidations {
 
 	public static final int SCRIPT_TITLE_LENGTH = 150;
 
-	public static final int SCRIPT_DESCRIPTION_LENGTH = 5000;
+	public static final int SCRIPT_DESCRIPTION_LENGTH = 10000;
 
 	public static final int SCRIPT_DIALECT_LENGTH = 20;
+
+	public static final int COMMENT_LENGTH = 1000;
 }

@@ -14,6 +14,9 @@ public class RefreshJwtTokenMirror {
 	private LocalDateTime expDate;
 
 	public static RefreshJwtTokenMirror convert(RefreshJwtToken refreshJwtToken) {
+		if (refreshJwtToken == null) {
+			return null;
+		}
 		RefreshJwtTokenMirror mirror = new RefreshJwtTokenMirror();
 		mirror.setUuid(refreshJwtToken.getUuid());
 		mirror.setExpDate(refreshJwtToken.getExpDate());

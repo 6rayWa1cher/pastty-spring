@@ -50,6 +50,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/v2/api-docs", "/webjars/**", "/swagger-resources", "/swagger-resources/**", "/swagger-ui.html").permitAll()
 //				.antMatchers("/ws/file_agent").authenticated()
 				.antMatchers("/script/**").permitAll()
+				.antMatchers("/comment/**").permitAll()
 				.antMatchers(HttpMethod.GET, "/user/*").permitAll()
 				.antMatchers(HttpMethod.POST, "/script/s/{" + ControllerValidations.SCRIPT_NAME_REGEX + "}/exec").hasAuthority(RoleAsString.USER)
 				// allow all who are accessing "auth" and "user" service

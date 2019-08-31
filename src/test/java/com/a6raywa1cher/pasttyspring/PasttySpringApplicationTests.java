@@ -3,6 +3,8 @@ package com.a6raywa1cher.pasttyspring;
 import com.a6raywa1cher.pasttyspring.configs.AppConfig;
 import com.a6raywa1cher.pasttyspring.configs.MainTestConfig;
 import com.a6raywa1cher.pasttyspring.dao.interfaces.ScriptService;
+import com.a6raywa1cher.pasttyspring.dao.repository.CommentRepository;
+import com.a6raywa1cher.pasttyspring.models.Comment;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import com.a6raywa1cher.pasttyspring.rest.dto.response.ExecutionScriptResponse;
@@ -12,7 +14,6 @@ import com.a6raywa1cher.pasttyspring.utils.ThrowsConsumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
 import org.hamcrest.core.StringContains;
 import org.junit.After;
 import org.junit.Assert;
@@ -39,6 +40,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static com.a6raywa1cher.pasttyspring.utils.TestUtils.registerUser;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -48,7 +50,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
-		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
 		"app.scripts-folder=testsScriptsFolder",
 		"spring.main.allow-bean-definition-overriding=true"
 }, classes = MainTestConfig.class)
@@ -67,6 +68,9 @@ public class PasttySpringApplicationTests {
 
 	@Autowired
 	private ScriptService scriptService;
+
+	@Autowired
+	private CommentRepository commentRepository;
 
 	@Autowired
 	private AppConfig appConfig;
@@ -172,20 +176,7 @@ public class PasttySpringApplicationTests {
 		String uploaderUsername = "invisibleScripts1";
 		String uploaderToken = registerUser(mockMvc, uploaderUsername);
 		String name = "simplemath";
-		BaseMatcher<String> notContainsName = new BaseMatcher<>() {
-			@Override
-			public boolean matches(Object item) {
-				if (!(item instanceof String)) {
-					return false;
-				}
-				return !((String) item).contains(name);
-			}
-
-			@Override
-			public void describeTo(Description description) {
-				description.appendText("Contains " + name);
-			}
-		};
+		BaseMatcher<String> notContainsName = TestUtils.notContainsString(name);
 		this.mockMvc.perform(post("/script/upload")
 				.header("jwt", uploaderToken)
 				.content(objectMapper.createObjectNode()
@@ -485,37 +476,11 @@ public class PasttySpringApplicationTests {
 	public void patchPostToExistingName() throws Exception {
 		String uploaderUsername = "patchPostToEN1";
 		String uploaderToken = registerUser(mockMvc, uploaderUsername);
-		String uploadName1 = "queensong";
-		String code1 = "Don't stop me now!";
-		String dialect1 = "queenlang";
-		this.mockMvc.perform(post("/script/upload")
-				.header("jwt", uploaderToken)
-				.content(objectMapper.createObjectNode()
-						.put("code", code1)
-						.put("dialect", dialect1)
-						.put("name", uploadName1)
-						.toString())
-				.contentType(MediaType.APPLICATION_JSON_UTF8))
-				.andDo(print())
-				.andExpect(status().is2xxSuccessful())
-				.andExpect(jsonPath("$.name").value(uploadName1))
-				.andExpect(jsonPath("$.dialect").value(dialect1));
+		String uploadName1 = "ppten_1";
+		TestUtils.uploadScript(mockMvc, uploaderToken, uploadName1);
 
-		String uploadName2 = "queensong2";
-		String code2 = "Anybody find me somebody to love...";
-		String dialect2 = "queenlang";
-		this.mockMvc.perform(post("/script/upload")
-				.header("jwt", uploaderToken)
-				.content(objectMapper.createObjectNode()
-						.put("code", code2)
-						.put("dialect", dialect2)
-						.put("name", uploadName2)
-						.toString())
-				.contentType(MediaType.APPLICATION_JSON_UTF8))
-				.andDo(print())
-				.andExpect(status().is2xxSuccessful())
-				.andExpect(jsonPath("$.name").value(uploadName2))
-				.andExpect(jsonPath("$.dialect").value(dialect2));
+		String uploadName2 = "ppten_2";
+		TestUtils.uploadScript(mockMvc, uploaderToken, uploadName2);
 
 		this.mockMvc.perform(patch("/script/s/" + uploadName2)
 				.header("jwt", uploaderToken)
@@ -531,8 +496,8 @@ public class PasttySpringApplicationTests {
 		this.mockMvc.perform(put("/script/s/" + uploadName2)
 				.header("jwt", uploaderToken)
 				.content(objectMapper.createObjectNode()
-						.put("code", code2)
-						.put("dialect", dialect2)
+						.put("code", TestUtils.CODE)
+						.put("dialect", TestUtils.DIALECT)
 						.put("name", uploadName1)
 						.put("visible", true)
 						.toString())
@@ -578,6 +543,205 @@ public class PasttySpringApplicationTests {
 				.andDo(print())
 				.andExpect(status().is2xxSuccessful());
 		Assert.assertFalse(path.toFile().exists());
+	}
+
+	@Test
+	public void commentTreeTest() throws Exception {
+		String uploaderUsername = "commentTreeTest1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "ctt_1";
+		TestUtils.uploadScript(mockMvc, uploaderToken, uploadName);
+
+		String comment1Body = "comment1";
+		MvcResult mvcResult1 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment1Body)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment1Body))
+				.andReturn();
+		long id1 = objectMapper.readTree(mvcResult1.getResponse().getContentAsString()).get("id").asLong();
+
+		String comment2Body = "comment2";
+		MvcResult mvcResult2 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment2Body)
+						.put("parentId", id1)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment2Body))
+				.andExpect(jsonPath("$.upperLevel").exists())
+				.andExpect(jsonPath("$.upperLevel.id").value(id1))
+				.andReturn();
+		long id2 = objectMapper.readTree(mvcResult2.getResponse().getContentAsString()).get("id").asLong();
+
+		String comment3Body = "comment3";
+		this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment3Body)
+						.put("parentId", id2)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment3Body))
+				.andExpect(jsonPath("$.upperLevel").exists())
+				.andExpect(jsonPath("$.upperLevel.id").value(id2));
+
+		String comment4Body = "comment4";
+		this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment4Body)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment4Body));
+
+		this.mockMvc.perform(get("/comment/" + uploadName))
+				.andDo(print())
+				.andExpect(content().string(StringContains.containsString(comment1Body)))
+				.andExpect(content().string(StringContains.containsString(comment2Body)))
+				.andExpect(content().string(StringContains.containsString(comment3Body)))
+				.andExpect(content().string(StringContains.containsString(comment4Body)));
+
+		this.mockMvc.perform(get("/comment/" + uploadName + "/" + id1 + "?lower=true"))
+				.andDo(print())
+				.andExpect(content().string(StringContains.containsString(comment1Body)))
+				.andExpect(content().string(StringContains.containsString(comment2Body)))
+				.andExpect(content().string(TestUtils.notContainsString(comment3Body)))
+				.andExpect(content().string(TestUtils.notContainsString(comment4Body)));
+
+		this.mockMvc.perform(get("/comment/" + uploadName + "/" + id1 + "?all_lower=true"))
+				.andDo(print())
+				.andExpect(content().string(StringContains.containsString(comment1Body)))
+				.andExpect(content().string(StringContains.containsString(comment2Body)))
+				.andExpect(content().string(StringContains.containsString(comment3Body)))
+				.andExpect(content().string(TestUtils.notContainsString(comment4Body)));
+	}
+
+	@Test
+	public void deleteScriptWithComments() throws Exception {
+		String uploaderUsername = "deleteScriptWC1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "dswc_1";
+		TestUtils.uploadScript(mockMvc, uploaderToken, uploadName);
+
+		String comment1Body = "comment1";
+		MvcResult mvcResult1 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment1Body)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment1Body))
+				.andReturn();
+		long id1 = objectMapper.readTree(mvcResult1.getResponse().getContentAsString()).get("id").asLong();
+
+		String comment2Body = "comment2";
+		MvcResult mvcResult2 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment2Body)
+						.put("parentId", id1)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment2Body))
+				.andExpect(jsonPath("$.upperLevel").exists())
+				.andExpect(jsonPath("$.upperLevel.id").value(id1))
+				.andReturn();
+		long id2 = objectMapper.readTree(mvcResult2.getResponse().getContentAsString()).get("id").asLong();
+
+		this.mockMvc.perform(delete("/script/s/" + uploadName)
+				.header("jwt", uploaderToken))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful());
+
+		Optional<Comment> c1 = commentRepository.findById(id1);
+		Optional<Comment> c2 = commentRepository.findById(id2);
+		Assert.assertTrue(c1.isEmpty());
+		Assert.assertTrue(c2.isEmpty());
+	}
+
+	@Test
+	public void deleteCommentTree() throws Exception {
+		String uploaderUsername = "deleteCommentT1";
+		String uploaderToken = registerUser(mockMvc, uploaderUsername);
+		String uploadName = "dct_1";
+		TestUtils.uploadScript(mockMvc, uploaderToken, uploadName);
+
+		String comment1Body = "comment1";
+		MvcResult mvcResult1 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment1Body)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment1Body))
+				.andReturn();
+		long id1 = objectMapper.readTree(mvcResult1.getResponse().getContentAsString()).get("id").asLong();
+
+		String comment2Body = "comment2";
+		MvcResult mvcResult2 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment2Body)
+						.put("parentId", id1)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment2Body))
+				.andExpect(jsonPath("$.upperLevel").exists())
+				.andExpect(jsonPath("$.upperLevel.id").value(id1))
+				.andReturn();
+		long id2 = objectMapper.readTree(mvcResult2.getResponse().getContentAsString()).get("id").asLong();
+
+		String comment3Body = "comment3";
+		MvcResult mvcResult3 = this.mockMvc.perform(post("/comment/" + uploadName)
+				.header("jwt", keychain.getOtherToken())
+				.content(objectMapper.createObjectNode()
+						.put("body", comment3Body)
+						.put("parentId", id2)
+						.toString())
+				.contentType(MediaType.APPLICATION_JSON_UTF8))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful())
+				.andExpect(jsonPath("$.body").value(comment3Body))
+				.andExpect(jsonPath("$.upperLevel").exists())
+				.andExpect(jsonPath("$.upperLevel.id").value(id2))
+				.andReturn();
+		long id3 = objectMapper.readTree(mvcResult3.getResponse().getContentAsString()).get("id").asLong();
+
+		this.mockMvc.perform(delete("/comment/" + uploadName + "/" + id1)
+				.header("jwt", keychain.getModeratorToken()))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful());
+
+		Optional<Comment> c1 = commentRepository.findById(id1);
+		Optional<Comment> c2 = commentRepository.findById(id2);
+		Optional<Comment> c3 = commentRepository.findById(id3);
+		Assert.assertTrue(c1.isEmpty());
+		Assert.assertTrue(c2.isEmpty());
+		Assert.assertTrue(c3.isEmpty());
+
+		this.mockMvc.perform(get("/script/s/" + uploadName))
+				.andDo(print())
+				.andExpect(status().is2xxSuccessful());
 	}
 
 	@After

@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface FieldDurationBigger {
-	String message() default "Duration is smaller than another!";
+	String message() default "Duration is smaller than another";
 
 	Class<?>[] groups() default {};
 

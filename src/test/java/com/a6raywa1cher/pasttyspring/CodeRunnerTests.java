@@ -30,12 +30,8 @@ import java.util.concurrent.TimeoutException;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {
-		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
 		"app.scripts-folder=testsScriptsFolder"
-//		"spring.main.allow-bean-definition-overriding=true"
 })
-//@TestPropertySource("classpath:appconfig.yml")
-//@ContextConfiguration(classes = ExecScriptsTestConfig.class)
 @AutoConfigureCache
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase

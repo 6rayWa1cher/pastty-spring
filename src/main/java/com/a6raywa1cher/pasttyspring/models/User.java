@@ -28,8 +28,11 @@ public class User {
 	@OneToMany(mappedBy = "author")
 	private List<Script> scripts;
 
-	@OneToMany(mappedBy = "user")
+	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user", orphanRemoval = true)
 	private List<RefreshJwtToken> refreshJwtTokens;
+
+	@OneToMany(mappedBy = "script")
+	private List<Comment> commentList;
 
 	@Override
 	public String toString() {

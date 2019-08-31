@@ -1,7 +1,9 @@
+spring.profiles.active: dev
+
 app:
   auth:
     jwt-secret-key: vIy3Wg073BAzHR4aWdhJQt8HYrLCqXsGLf8r7NcimRJYHDY4NqyCXoWsNFJCnn3
-    access-token-duration: PT5M
+    access-token-duration: P1D
     refresh-token-duration: P90D
   scripts-folder: C:\Users\6rayWa1cher\Desktop\scripts
   exec-script:
@@ -12,9 +14,6 @@ app:
         exec: "python {1}"
         sourceFilename: "{1}.py"
       - name: java12
-        #        compile:
-        #          - "copy \"{1}\" \"{3}/Main.java\""
-        #          - "javac -d {3} {3}/Main.java"
         exec: "java {1}"
         sourceFilename: "{1}.java"
 # ===============================
@@ -26,9 +25,6 @@ server.tomcat.max-http-post-size: 1572864
 # ===============================
 # DB CONNECTION
 # ===============================
-spring.datasource.driver-class-name: org.postgresql.Driver
-spring.jpa.properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
-#spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
 spring.datasource.url: jdbc:postgresql://localhost:5433/postgres
 spring.datasource.username: postgres
 spring.datasource.password: postgres

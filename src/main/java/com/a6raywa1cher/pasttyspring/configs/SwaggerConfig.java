@@ -17,6 +17,7 @@ import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -50,7 +51,7 @@ public class SwaggerConfig {
 				.useDefaultResponseMessages(true)
 				.apiInfo(apiInfo)
 //				.additionalModels(typeResolver.resolve(UploadScriptDTO.class))
-				.securityContexts(Collections.singletonList(securityContext()))
+				.securityContexts(Arrays.asList(securityContext(), commentsSecurityContext()))
 				.select()
 				.apis(Predicates.or(
 						Predicates.not(RequestHandlerSelectors.basePackage("org.springframework.boot")),
@@ -66,7 +67,17 @@ public class SwaggerConfig {
 				.securityReferences(defaultAuth())
 				.forPaths(Predicates.not(Predicates.or(
 						PathSelectors.ant("/auth/login"),
-						PathSelectors.ant("/user/reg"))))
+						PathSelectors.ant("/user/reg"),
+						PathSelectors.ant("/comment/**"))))
+				.build();
+	}
+
+	private SecurityContext commentsSecurityContext() {
+		//noinspection Guava
+		return SecurityContext.builder()
+				.securityReferences(defaultAuth())
+				.forPaths(PathSelectors.ant("/comment/**"))
+				.forHttpMethods(Predicates.not(http -> http != null && http.matches("GET")))
 				.build();
 	}
 
