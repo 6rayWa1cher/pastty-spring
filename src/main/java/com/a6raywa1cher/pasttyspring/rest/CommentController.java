@@ -7,13 +7,14 @@ import com.a6raywa1cher.pasttyspring.models.Comment;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
+import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.EditingNotYourCommentException;
 import com.a6raywa1cher.pasttyspring.rest.dto.mirror.CommentMirror;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.PutCommentDTO;
 import com.a6raywa1cher.pasttyspring.rest.dto.request.UploadCommentDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -80,7 +81,7 @@ public class CommentController {
 
 	@Transactional
 	@PostMapping("/{script_name}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<CommentMirror> upload(@RequestBody @Valid UploadCommentDTO dto,
 	                                            @PathVariable("script_name") String scriptName,
 	                                            Authentication authentication) {
@@ -111,7 +112,7 @@ public class CommentController {
 
 	@Transactional
 	@PutMapping("/{script_name}/{comment_id}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<CommentMirror> put(@RequestBody @Valid PutCommentDTO dto,
 	                                         @PathVariable("script_name") String scriptName,
 	                                         @PathVariable("comment_id") long commentId,
@@ -137,7 +138,7 @@ public class CommentController {
 
 	@Transactional
 	@DeleteMapping("/{script_name}/{comment_id}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<?> delete(@PathVariable("script_name") String scriptName,
 	                                @PathVariable("comment_id") long commentId,
 	                                Authentication authentication) {
@@ -152,7 +153,7 @@ public class CommentController {
 		}
 		Comment comment = optionalComment.get();
 		User user = userService.findFromAuthentication(authentication).orElseThrow();
-		if (!Objects.equals(comment.getUser(), user) && !user.getRole().getTree().contains(Role.MODERATOR)) {
+		if (!Objects.equals(comment.getUser(), user) && !user.getRole().getTree().contains(Role.ROLE_MODERATOR)) {
 			throw new EditingNotYourCommentException();
 		}
 		commentService.delete(comment);

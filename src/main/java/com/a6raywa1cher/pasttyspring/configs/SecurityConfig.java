@@ -2,7 +2,6 @@ package com.a6raywa1cher.pasttyspring.configs;
 
 import com.a6raywa1cher.pasttyspring.configs.security.JwtSecurityTokenService;
 import com.a6raywa1cher.pasttyspring.configs.security.TokenOncePerRequestFilter;
-import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.rest.ControllerValidations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
@@ -46,13 +45,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.addFilterAfter(new TokenOncePerRequestFilter(securityTokenService, provider), UsernamePasswordAuthenticationFilter.class)
 				// authorization requests config
 				.authorizeRequests()
-				.antMatchers(HttpMethod.GET, "/actuator/**").hasAnyAuthority(RoleAsString.ADMIN)
+				.antMatchers(HttpMethod.GET, "/actuator/**").hasRole("ADMIN")
 				.antMatchers("/v2/api-docs", "/webjars/**", "/swagger-resources", "/swagger-resources/**", "/swagger-ui.html").permitAll()
 //				.antMatchers("/ws/file_agent").authenticated()
 				.antMatchers("/script/**").permitAll()
 				.antMatchers("/comment/**").permitAll()
 				.antMatchers(HttpMethod.GET, "/user/*").permitAll()
-				.antMatchers(HttpMethod.POST, "/script/s/{" + ControllerValidations.SCRIPT_NAME_REGEX + "}/exec").hasAuthority(RoleAsString.USER)
+				.antMatchers(HttpMethod.POST, "/script/s/{" + ControllerValidations.SCRIPT_NAME_REGEX + "}/exec").hasRole("USER")
 				// allow all who are accessing "auth" and "user" service
 				.antMatchers(HttpMethod.POST, "/auth/login", "/auth/get_access", "/user/reg").permitAll()
 				.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()

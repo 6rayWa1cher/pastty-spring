@@ -34,17 +34,17 @@ public class AuthoritiesKeychain {
 			this.adminRefreshToken = admin.getSecond();
 			mockMvc.perform(get("/user/admin"))
 					.andDo(print())
-					.andExpect(jsonPath("$.role").value("ADMIN"));
+					.andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
 			TestUtils.registerUser(mockMvc, "moder", "moder");
 			mockMvc.perform(post("/user/moder/role")
 					.header("jwt", this.adminToken)
 					.content(objectMapper.createObjectNode()
-							.put("role", "MODERATOR")
+							.put("role", "ROLE_MODERATOR")
 							.toString())
 					.contentType(MediaType.APPLICATION_JSON))
 					.andDo(print())
 					.andExpect(status().is2xxSuccessful())
-					.andExpect(jsonPath("$.role").value("MODERATOR"));
+					.andExpect(jsonPath("$.role").value("ROLE_MODERATOR"));
 			Pair<String, String> moderator = TestUtils.login(mockMvc, "moder", "moder");
 			this.moderatorToken = moderator.getFirst();
 			this.moderatorRefreshToken = moderator.getSecond();

@@ -9,6 +9,7 @@ import com.a6raywa1cher.pasttyspring.dao.interfaces.UserService;
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.User;
 import com.a6raywa1cher.pasttyspring.models.enums.Role;
+import com.a6raywa1cher.pasttyspring.models.enums.RoleAsString;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
 import com.a6raywa1cher.pasttyspring.rest.dto.exceptions.*;
 import com.a6raywa1cher.pasttyspring.rest.dto.mirror.ScriptMirror;
@@ -23,7 +24,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -186,7 +187,7 @@ public class ScriptController {
 	}
 
 	@PostMapping("/s/{name}/change_type")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<ScriptMirror> changeType(@RequestBody @Valid ChangeTypeDTO dto,
 	                                               @PathVariable String name,
 	                                               Authentication authentication) {
@@ -195,7 +196,7 @@ public class ScriptController {
 			return ResponseEntity.notFound().build();
 		}
 		Script script = optionalScript.get();
-		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
+		boolean isModerator = authentication.getAuthorities().contains(Role.ROLE_MODERATOR);
 		if (!isModerator && (!script.getAuthor().equals(userService.findFromTokenUser((TokenUser) authentication.getPrincipal())) || !script.isVisible())) {
 			throw new NoEnoughRightsForChangeException();
 		}
@@ -215,7 +216,7 @@ public class ScriptController {
 	}
 
 	@PostMapping("/s/{name}/exec")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public CompletionStage<ResponseEntity<ExecutionScriptResponse>> exec(@RequestBody @Valid ExecuteScriptDTO dto,
 	                                                                     @PathVariable String name,
 	                                                                     Authentication authentication) {
@@ -225,7 +226,7 @@ public class ScriptController {
 //			return CompletableFuture.supplyAsync(() -> ResponseEntity.notFound().build(), new SimpleAsyncTaskExecutor());
 		}
 		Script script = optionalScript.get();
-		boolean isModerator = authentication.getAuthorities().contains(Role.MODERATOR);
+		boolean isModerator = authentication.getAuthorities().contains(Role.ROLE_MODERATOR);
 		if (!script.getType().equals(ScriptType.EXEC_SCRIPT) && !isModerator) {
 			throw new NotExecScriptException();
 		}
@@ -248,7 +249,7 @@ public class ScriptController {
 	@SuppressWarnings("DuplicatedCode")
 	@Transactional(rollbackOn = IOException.class)
 	@PatchMapping("/s/{name}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<ScriptMirror> patch(@RequestBody @Valid PatchScriptDTO dto,
 	                                          @PathVariable @Pattern(regexp = ControllerValidations.SCRIPT_NAME_REGEX)
 	                                          @Valid String name, Authentication authentication)
@@ -289,7 +290,7 @@ public class ScriptController {
 	@SuppressWarnings("DuplicatedCode")
 	@Transactional(rollbackOn = IOException.class)
 	@PutMapping("/s/{name}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<ScriptMirror> put(@RequestBody @Valid PutScriptDTO dto,
 	                                        @PathVariable @Pattern(regexp = ControllerValidations.SCRIPT_NAME_REGEX)
 	                                        @Valid String name, Authentication authentication)
@@ -322,7 +323,7 @@ public class ScriptController {
 
 	@Transactional(rollbackOn = IOException.class)
 	@DeleteMapping("/s/{name}")
-	@PreAuthorize("hasAuthority(T(com.a6raywa1cher.pasttyspring.models.enums.Role).USER.name())")
+	@Secured(RoleAsString.ROLE_USER)
 	public ResponseEntity<?> delete(@PathVariable String name, Authentication authentication)
 			throws IOException {
 		Optional<Script> optionalScript = scriptService.findByName(name);
@@ -332,15 +333,15 @@ public class ScriptController {
 		Script script = optionalScript.get();
 		User user = userService.findFromAuthentication(authentication).orElseThrow();
 		if (script.getAuthor() == null) {
-			if (!user.getRole().getTree().contains(Role.MODERATOR)) {
+			if (!user.getRole().getTree().contains(Role.ROLE_MODERATOR)) {
 				throw new NoEnoughRightsForChangeException();
 			}
 		} else if (!script.isVisible()) {
-			if (!user.getRole().getTree().contains(Role.ADMIN)) {
+			if (!user.getRole().getTree().contains(Role.ROLE_ADMIN)) {
 				throw new NoEnoughRightsForChangeException();
 			}
 		} else {
-			if (!script.getAuthor().equals(user) && !user.getRole().getTree().contains(Role.MODERATOR)) {
+			if (!script.getAuthor().equals(user) && !user.getRole().getTree().contains(Role.ROLE_MODERATOR)) {
 				throw new NoEnoughRightsForChangeException();
 			}
 		}

@@ -46,7 +46,7 @@ public class UserController {
 		User user = new User();
 		user.setUsername(dto.getUsername());
 		user.setPassword(hashingService.hash(dto.getPassword()));
-		user.setRole(userService.isAnyoneElseRegistered() ? Role.USER : Role.ADMIN);
+		user.setRole(userService.isAnyoneElseRegistered() ? Role.ROLE_USER : Role.ROLE_ADMIN);
 		return ResponseEntity.ok(UserMirror.convert(userService.save(user)));
 	}
 
@@ -66,7 +66,7 @@ public class UserController {
 		Role requesterRole = requester.getRole();
 		Role targetUserRole = targetUser.getRole();
 		Role dtoRole = dto.getRole();
-		if (!targetUser.getUsername().equals(requester.getUsername()) && requesterRole != Role.ADMIN) {
+		if (!targetUser.getUsername().equals(requester.getUsername()) && requesterRole != Role.ROLE_ADMIN) {
 			throw new NoEnoughRightsForChangeException();
 		} else if (targetUser.getUsername().equals(requester.getUsername()) && !targetUserRole.getTree().contains(dtoRole)) {
 			throw new NoEnoughRightsForChangeException();

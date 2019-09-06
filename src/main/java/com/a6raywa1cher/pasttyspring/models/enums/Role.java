@@ -7,10 +7,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 public enum Role implements GrantedAuthority {
-	BLOCKED,
-	USER(BLOCKED),
-	MODERATOR(USER, BLOCKED),
-	ADMIN(MODERATOR, USER, BLOCKED);
+	ROLE_BLOCKED,
+	ROLE_USER(ROLE_BLOCKED),
+	ROLE_MODERATOR(ROLE_USER, ROLE_BLOCKED),
+	ROLE_ADMIN(ROLE_MODERATOR, ROLE_USER, ROLE_BLOCKED);
 	private Set<Role> tree;
 
 	Role(Role... children) {
