@@ -51,7 +51,8 @@ public class SwaggerConfig {
 				.useDefaultResponseMessages(true)
 				.apiInfo(apiInfo)
 //				.additionalModels(typeResolver.resolve(UploadScriptDTO.class))
-				.securityContexts(Arrays.asList(securityContext(), commentsSecurityContext()))
+				.securityContexts(Arrays.asList(securityContext(), commentsSecurityContext(),
+						scripts1SecurityContext(), scripts2SecurityContext()))
 				.select()
 				.apis(Predicates.or(
 						Predicates.not(RequestHandlerSelectors.basePackage("org.springframework.boot")),
@@ -68,7 +69,9 @@ public class SwaggerConfig {
 				.forPaths(Predicates.not(Predicates.or(
 						PathSelectors.ant("/auth/login"),
 						PathSelectors.ant("/user/reg"),
-						PathSelectors.ant("/comment/**"))))
+						PathSelectors.ant("/user/*"),
+						PathSelectors.ant("/comment/**"),
+						PathSelectors.ant("/script/**"))))
 				.build();
 	}
 
@@ -80,6 +83,26 @@ public class SwaggerConfig {
 				.forHttpMethods(Predicates.not(http -> http != null && http.matches("GET")))
 				.build();
 	}
+
+	private SecurityContext scripts1SecurityContext() {
+		//noinspection Guava
+		return SecurityContext.builder()
+				.securityReferences(defaultAuth())
+				.forPaths(PathSelectors.ant("/script/**"))
+				.forHttpMethods(Predicates.not(http -> http != null && (http.matches("GET") || http.matches("POST"))))
+				.build();
+	}
+
+	private SecurityContext scripts2SecurityContext() {
+		//noinspection Guava
+		return SecurityContext.builder()
+				.securityReferences(defaultAuth())
+				.forPaths(Predicates.and(PathSelectors.ant("/script/**"),
+						Predicates.not(PathSelectors.ant("/script/upload"))))
+				.forHttpMethods(http -> http != null && http.matches("POST"))
+				.build();
+	}
+
 
 	private List<SecurityReference> defaultAuth() {
 		AuthorizationScope authorizationScope

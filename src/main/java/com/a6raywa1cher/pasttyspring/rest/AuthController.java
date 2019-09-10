@@ -58,11 +58,6 @@ public class AuthController {
 		if (user.isEmpty() || !hashingService.compare(dto.getPassword(), user.get().getPassword())) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
-//		Pair<RefreshJwtToken, String> pair = tokenService.createToken(user.get()).orElseThrow();
-//		RefreshJwtTokenMirror refreshJwtTokenMirror = RefreshJwtTokenMirror.convert(pair.getFirst());
-//		log.info("User username:{} logged in from ip:{} uuid:{}",
-//				dto.getUsername(), request.getRemoteAddr(), tokenService.getJti(token));
-//		return ResponseEntity.ok(new LoginResponse(refreshJwtTokenMirror, pair.getSecond()));
 		Pair<RefreshJwtToken, String> refreshJwtTokenStringPair = tokenService.createRefreshToken(user.get()).orElseThrow();
 		String accessJwtToken = tokenService.createAccessToken(refreshJwtTokenStringPair.getFirst()).orElseThrow();
 		return ResponseEntity.ok(new LoginResponse(RefreshJwtTokenMirror.convert(refreshJwtTokenStringPair.getFirst()),
