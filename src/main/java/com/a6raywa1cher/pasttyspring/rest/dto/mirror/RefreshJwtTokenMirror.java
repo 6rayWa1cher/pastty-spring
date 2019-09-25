@@ -1,6 +1,7 @@
 package com.a6raywa1cher.pasttyspring.rest.dto.mirror;
 
 import com.a6raywa1cher.pasttyspring.models.RefreshJwtToken;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ public class RefreshJwtTokenMirror {
 
 	private UserMirror userMirror;
 
+	@JsonFormat(shape = JsonFormat.Shape.STRING)
 	private LocalDateTime expDate;
 
 	public static RefreshJwtTokenMirror convert(RefreshJwtToken refreshJwtToken) {

@@ -1,6 +1,7 @@
 package com.a6raywa1cher.pasttyspring.rest.dto.mirror;
 
 import com.a6raywa1cher.pasttyspring.models.Comment;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class CommentMirror {
 
 	private String body;
 
+	@JsonFormat(shape = JsonFormat.Shape.STRING)
 	private LocalDateTime creationTime;
 
 	private Boolean edited;

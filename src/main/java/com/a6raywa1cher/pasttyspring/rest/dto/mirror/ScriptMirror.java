@@ -2,6 +2,7 @@ package com.a6raywa1cher.pasttyspring.rest.dto.mirror;
 
 import com.a6raywa1cher.pasttyspring.models.Script;
 import com.a6raywa1cher.pasttyspring.models.enums.ScriptType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ public class ScriptMirror {
 
 	private UserMirror author;
 
+	@JsonFormat(shape = JsonFormat.Shape.STRING)
 	private LocalDateTime creationTime;
 
 	private Boolean visible;
